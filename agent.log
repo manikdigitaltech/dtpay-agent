@@ -1,0 +1,4 @@
+2026-07-29 15:50:14,254 ERROR Claude API call failed for cp_id=122: Object of type Decimal is not JSON serializable
+2026-07-29 15:50:14,633 ERROR Claude API call failed for cp_id=134: Object of type Decimal is not JSON serializable
+2026-07-29 15:56:47,783 ERROR Claude API call failed for cp_id=122: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': "output_config.format.schema: For 'object' type, 'additionalProperties' must be explicitly set to false"}, 'request_id': 'req_011CdWBuewgVyZy2jyoSM4qX'}
+2026-07-29 15:56:49,776 ERROR Claude API call failed for cp_id=134: Error code: 400 - {'type': 'error', 'error': {'type': 'invalid_request_error', 'message': "output_config.format.schema: For 'object' type, 'additionalProperties' must be explicitly set to false"}, 'request_id': 'req_011CdWBuq4tFPie6m7KNqXN8'}
