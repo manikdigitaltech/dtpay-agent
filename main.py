@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta, timezone
 
-from extract import fetch_all
+from extract import fetch_all, get_weekly_eligible_cp_product_ids
 from rollup import rollup_by_partner, merge_with_previous
 from analyze import analyze_partner
 from email_template import render_partner_email
@@ -33,10 +33,14 @@ def run_weekly(reference_date=None):
     week_start, week_end = _last_complete_week(reference_date)
     prev_week_start, prev_week_end = week_start - timedelta(days=7), week_start
 
+    eligible = get_weekly_eligible_cp_product_ids()
+
     current_metrics, current_reasons, current_operators, current_daily = fetch_all(
-        week_start, week_end, include_daily=True
+        week_start, week_end, eligible, include_daily=True
     )
-    previous_metrics, previous_reasons, previous_operators, _ = fetch_all(prev_week_start, prev_week_end)
+    previous_metrics, previous_reasons, previous_operators, _ = fetch_all(
+        prev_week_start, prev_week_end, eligible
+    )
 
     current_digests = rollup_by_partner(
         current_metrics, current_reasons, current_operators, current_daily, week_start

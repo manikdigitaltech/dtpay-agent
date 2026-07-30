@@ -53,6 +53,7 @@ For each service you're given, write:
 Rules:
 - Never restate specific conversion percentages, counts, or figures in your text - those are shown to the partner separately, right next to your summary. This applies to daily figures too, not just the weekly ones. Referring to categories ("insufficient balance", "one of the networks") or directional language ("improved", "worsened", "roughly doubled") is fine; restating "3.28%" or "1,401 of 42,684" is not.
 - Do not frame operator- or customer-side issues (insufficient balance, OTP timeout, an operator's own eligibility rules, "no active deposit flow") as the partner's fault - describe those as market/network conditions outside the partner's control, not something for them to fix on their end.
+- If total_resolved is under about 30, say plainly that the volume is too low to draw a real conclusion from, rather than treating a single-digit sample as a meaningful rate.
 """
 
 OUTPUT_SCHEMA = {

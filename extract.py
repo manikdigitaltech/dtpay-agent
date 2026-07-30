@@ -1,22 +1,21 @@
 """
-Extraction layer for the weekly partner performance agent.
+Extraction layer, shared by the scheduled weekly email and the
+on-demand summary API.
 
 SQL here fetches raw counts grouped by status (and, where relevant,
 by provider/operator/channel) - it does NOT decide what counts as
-"success" or "resolved" anymore. That decision is provider-specific
-(pawapay's success marker is COMPLETED, razorpay's is AUTHORIZED, and
-each excludes different pending-like statuses), so it lives in
-providers.py instead of being baked into SQL as literal strings that
-only happened to be correct for pawapay.
+"success" or "resolved". That decision is provider-specific (pawapay's
+success marker is COMPLETED, razorpay's is AUTHORIZED, and each
+excludes different pending-like statuses), so it lives in providers.py
+instead of being baked into SQL as literal strings that only happened
+to be correct for pawapay.
 
-Two-phase fetch: first find which cp_product_ids are even eligible
-(approved, enabled, opted into the weekly summary) - a cheap query
-against dtpay_cp_products/dtpay_users alone - then scope every other
-query to just those, via cp_product_id IN (...). Without this, the
-reason/operator/daily queries would scan every transaction for every
-partner in the window and only filter down to opted-in partners in
-Python afterward, which works but does a lot of unnecessary database
-work once there are partners who aren't opted in.
+fetch_all() no longer decides which cp_product_ids are in scope
+either - the weekly job and the on-demand API have different, unrelated
+eligibility rules (weekly_summary_enabled vs. role + ownership), so
+each caller resolves its own scope and passes the resulting
+cp_product_ids in explicitly. get_weekly_eligible_cp_product_ids()
+below is main.py's rule; auth.py has the API's.
 
 See dtpay_daily_metrics_draft.sql for the original single-provider
 version of these queries and the earlier assumptions verified against
@@ -56,10 +55,10 @@ def _clean_rows(rows):
     return rows
 
 
-# Cheap on purpose: touches only the small config tables, not
-# payment_transactions/payout_logs, so it's fine to run unconditionally
-# before deciding whether the bigger queries are even worth running.
-ELIGIBLE_CP_PRODUCT_IDS_SQL = """
+# main.py's eligibility rule for the scheduled weekly email - separate
+# from the on-demand API's, which lives in auth.py instead, since the
+# two features decide "who's in scope" in completely unrelated ways.
+WEEKLY_ELIGIBLE_CP_PRODUCT_IDS_SQL = """
     SELECT DISTINCT cpp.id AS cp_product_id
     FROM dtpay_cp_products cpp
     JOIN dtpay_users u ON u.id = cpp.cp_id
@@ -67,6 +66,16 @@ ELIGIBLE_CP_PRODUCT_IDS_SQL = """
       AND u.enabled = 1
       AND u.weekly_summary_enabled = 1
 """
+
+
+def get_weekly_eligible_cp_product_ids():
+    """cp_product_ids eligible for the scheduled weekly email: approved,
+    enabled, and opted in. Cheap - only touches the config tables."""
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(WEEKLY_ELIGIBLE_CP_PRODUCT_IDS_SQL)
+            return tuple(row["cp_product_id"] for row in cur.fetchall())
+
 
 # One row per (product, provider, transaction_status) combination in
 # the window - no HAVING threshold here, since "how many resolved"
@@ -116,9 +125,7 @@ DAILY_STATUS_COUNTS_SQL = """
 # partner_error_message is empty or just the generic acceptance
 # placeholder. This is provider-agnostic on purpose - it's a content
 # check (does this field look like CODE#description), not a check
-# against a specific provider's status literal, so it doesn't need a
-# separate branch for razorpay, which barely uses cb_error_message at
-# all in what's been seen so far.
+# against a specific provider's status literal.
 REASON_COUNTS_SQL = """
     SELECT
         product_id,
@@ -158,41 +165,38 @@ OPERATOR_COUNTS_SQL = """
 """
 
 
-def fetch_all(day_start, day_end, min_resolved=None, include_daily=False):
+def fetch_all(day_start, day_end, cp_product_ids, min_resolved=None, include_daily=False):
     """
-    Runs the extraction queries for the [day_start, day_end) window
-    and classifies the results per-provider (see providers.py),
-    returning the same shape as before the provider split: a list of
+    Runs the extraction queries for the [day_start, day_end) window,
+    scoped to exactly the given cp_product_ids, and classifies the
+    results per-provider (see providers.py). Returns a list of
     per-product metric rows, a list of per-product reason rows, a
     list of per-product operator/channel rows, and (if include_daily)
     a list of per-product-per-day rows. min_resolved defaults to
     config's MIN_RESOLVED_THRESHOLD.
 
-    Looks up which cp_product_ids are eligible (approved, enabled,
-    opted into the weekly summary) first, and scopes every other
-    query to just those - if nobody's eligible, returns empty results
-    immediately rather than running the bigger queries at all.
+    cp_product_ids is the caller's responsibility to resolve - this
+    function doesn't know or care whether that's "everyone opted into
+    the weekly email" or "this one admin/user's allowed products for
+    an API request". An empty tuple returns empty results immediately
+    without touching payment_transactions/payout_logs at all.
 
     include_daily only runs the daily breakdown - only needed for the
     current week (the trend chart), not the previous week.
     """
     if min_resolved is None:
         min_resolved = MIN_RESOLVED_THRESHOLD
+    if not cp_product_ids:
+        return [], [], [], []
+
+    params = {
+        "day_start": day_start,
+        "day_end": day_end,
+        "cp_product_ids": tuple(cp_product_ids),
+    }
 
     with get_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(ELIGIBLE_CP_PRODUCT_IDS_SQL)
-            eligible_ids = tuple(row["cp_product_id"] for row in cur.fetchall())
-
-            if not eligible_ids:
-                return [], [], [], []
-
-            params = {
-                "day_start": day_start,
-                "day_end": day_end,
-                "cp_product_ids": eligible_ids,
-            }
-
             cur.execute(STATUS_COUNTS_SQL, params)
             status_counts = _clean_rows(cur.fetchall())
 
@@ -210,7 +214,7 @@ def fetch_all(day_start, day_end, min_resolved=None, include_daily=False):
     product_metrics = classify_status_counts(status_counts, min_resolved)
 
     # Only keep reason/operator rows for products that actually made
-    # the cut above (over the volume floor too, not just eligible).
+    # the cut above (over the volume floor too, not just in scope).
     kept_product_ids = {p["product_id"] for p in product_metrics}
     reason_rows = filter_reason_rows(
         [r for r in reason_counts if r["product_id"] in kept_product_ids]
