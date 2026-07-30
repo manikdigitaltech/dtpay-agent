@@ -4,3 +4,7 @@ __pycache__/
 *.pyc
 .venv/
 venv/
+payment_transactions.xlsx
+*.xlsx
+razorpay-payment_transactions.csv
+razorpay-payout_logs.csv

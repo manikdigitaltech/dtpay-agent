@@ -3,11 +3,14 @@ Calls Claude to turn one partner's rolled-up metrics into a written
 summary and recommendations per service.
 
 The numbers themselves (conversion rate, counts, reasons, operators)
-come entirely from extract.py / rollup.py - Claude only writes the
-narrative on top of them, and is explicitly told not to restate
-figures, so nothing generated here can put a wrong number in front of
-a partner. See dtpay_daily_metrics_draft.sql for where these numbers
-come from and what's been verified about them.
+come entirely from extract.py / rollup.py / providers.py - Claude
+only writes the narrative on top of them, and is explicitly told not
+to restate figures, so nothing generated here can put a wrong number
+in front of a partner. DTPay routes products through several wallet
+providers (pawapay, razorpay confirmed so far) with different success
+markers and different meanings for "operator" - Claude is given the
+provider name explicitly so it doesn't call a UPI/card channel a
+"network" the way pawapay's actual mobile networks are.
 
 output_config / JSONOutputFormatParam usage confirmed directly against
 the installed anthropic SDK (0.120.2) and a live (auth-only-failing)
@@ -38,12 +41,14 @@ if not logger.handlers:
     logger.addHandler(_handler)
     logger.setLevel(logging.INFO)
 
-SYSTEM_PROMPT = """You are a performance analyst for DTPay, a mobile money wallet integration platform, writing a weekly analysis that will be shown directly to content-service partners (e.g. KidsFlix, Learn2bFit) about how their service performed this week compared to the week before.
+SYSTEM_PROMPT = """You are a performance analyst for DTPay, a payment integration platform, writing a weekly analysis that will be shown directly to content-service partners (e.g. KidsFlix, Learn2bFit) about how their service performed this week compared to the week before.
+
+DTPay routes different products through different payment providers (e.g. pawapay for African mobile money, razorpay for Indian UPI/card/bank payments), given to you as `provider`. What "operator" means in the data depends on it: for a mobile-money provider it's the actual telecom network (MTN, Airtel, ...); for a card/UPI provider it's the payment channel or method instead (upi, card, ...), not a network. Use whichever framing actually fits the given provider rather than assuming it's always a mobile network.
 
 For each service you're given, write:
 - summary: one to two sentences on what's actually happening, grounded in this week's failure/rejection reasons and operator data - not generic commentary. Refer to the service by its product_name and the country by its full name (both given to you) rather than an ID or abbreviation. When previous-week data is present, make the comparison the point of the summary (what changed, and - if the reason/operator breakdown suggests why - what likely drove it), not just this week's standalone number. When previous_conversion_rate_pct is null, there's nothing to compare against (new this week, or no resolved volume last week) - say so plainly rather than implying a trend.
-- recommendations: 1-3 specific, actionable items tied to the actual data (a specific failure reason, a specific underperforming network, or a specific week-over-week shift), not generic advice like "improve your conversion rate."
-- notable_days: you're also given `daily`, a day-by-day breakdown of this week. If one or more days clearly stand out from the rest (a dip, a spike, a shift partway through), name them by weekday in your summary and list their exact dates (the "date" field, YYYY-MM-DD) here. If the week is basically flat with no real story day-to-day, say so in the summary and leave this empty - don't force a daily narrative onto a week that doesn't have one. A day with much lower volume than the others can look artificially swingy in its rate; weigh that before calling a day out as notable.
+- recommendations: 1-3 specific, actionable items tied to the actual data (a specific failure reason, a specific underperforming network or channel, or a specific week-over-week shift), not generic advice like "improve your conversion rate."
+- notable_days: you're also given `daily`, a day-by-day breakdown of this week. Only include a date here if your summary text explicitly names and discusses that day by weekday - never flag a day here that the summary doesn't actually talk about, since the email highlights these days visually and the reader will expect the text right below to explain why. Use this sparingly: only for a day that's a genuinely clear standout (a real dip or spike), not just modestly above or below the week's average, and only when that's a more important story to tell than the week-over-week comparison. If the week-over-week comparison is the more useful thing to focus on this time, write about that instead and leave notable_days empty rather than flagging a day in passing. A day with much lower volume than the others can look artificially swingy in its rate; weigh that before calling it notable at all.
 
 Rules:
 - Never restate specific conversion percentages, counts, or figures in your text - those are shown to the partner separately, right next to your summary. This applies to daily figures too, not just the weekly ones. Referring to categories ("insufficient balance", "one of the networks") or directional language ("improved", "worsened", "roughly doubled") is fine; restating "3.28%" or "1,401 of 42,684" is not.
@@ -86,6 +91,7 @@ def _service_payload(service):
         "product_id": service["product_id"],
         "product_name": service["product_name"],
         "country": service["country"],
+        "provider": service.get("provider"),
         "total_resolved": service["total_resolved"],
         "completed": service["completed"],
         "failed": service["failed"],

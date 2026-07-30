@@ -1,17 +1,29 @@
 """
 Extraction layer for the weekly partner performance agent.
 
-These three queries are the same ones verified against real sample
-data in dtpay_daily_metrics_draft.sql, just parameterized properly
-here instead of using literal dates. See that file's comments for
-why each assumption (QUEUED exclusion, reason-code source per status,
-case-insensitive product status, enabled partner accounts) is there.
+SQL here fetches raw counts grouped by status (and, where relevant,
+by provider/operator/channel) - it does NOT decide what counts as
+"success" or "resolved" anymore. That decision is provider-specific
+(pawapay's success marker is COMPLETED, razorpay's is AUTHORIZED, and
+each excludes different pending-like statuses), so it lives in
+providers.py instead of being baked into SQL as literal strings that
+only happened to be correct for pawapay.
+
+See dtpay_daily_metrics_draft.sql for the original single-provider
+version of these queries and the earlier assumptions verified against
+real pawapay data before the provider split existed.
 """
 import pymysql
 import pymysql.cursors
 from decimal import Decimal
 
 from config import DB_CONFIG, MIN_RESOLVED_THRESHOLD
+from providers import (
+    classify_status_counts,
+    classify_daily_counts,
+    filter_reason_rows,
+    classify_operator_counts,
+)
 
 
 def get_connection():
@@ -19,13 +31,11 @@ def get_connection():
 
 
 # pymysql returns SUM()/ROUND() results as decimal.Decimal, not int or
-# float - confirmed directly against a real connection (completed,
-# failed, conversion_rate_pct, operator_ok all came back as Decimal;
-# COUNT() results like total_resolved/attempts/occurrences did not).
-# json.dumps() in analyze.py can't serialize Decimal at all, so this
-# cleans every row right after fetching, before anything downstream
-# ever sees one. Rate-like fields become float; anything else that's
-# a Decimal is a count and becomes int.
+# float - confirmed directly against a real connection. json.dumps()
+# in analyze.py can't serialize Decimal at all, so this cleans every
+# row right after fetching, before anything downstream ever sees one.
+# Rate-like fields become float; anything else that's a Decimal is a
+# count and becomes int.
 _FLOAT_FIELDS = {"conversion_rate_pct"}
 
 
@@ -37,122 +47,153 @@ def _clean_rows(rows):
     return rows
 
 
-PRODUCT_METRICS_SQL = """
-    WITH terminal_txns AS (
-        SELECT *
-        FROM payment_transactions
-        WHERE transaction_status != 'QUEUED'
-          AND date_time >= %(day_start)s
-          AND date_time <  %(day_end)s
-    )
+# One row per (product, provider, transaction_status) combination in
+# the window - no HAVING threshold here, since "how many resolved"
+# depends on which statuses that product's provider excludes, decided
+# in providers.classify_status_counts() after this comes back.
+STATUS_COUNTS_SQL = """
     SELECT
         t.product_id,
         t.product_name,
         t.country_name                                                     AS country_code,
+        t.agg_name                                                          AS provider,
+        t.transaction_status,
         cpp.id                                                             AS cp_product_id,
         u.id                                                                AS cp_id,
         u.email                                                             AS partner_email,
         u.company_name                                                      AS partner_name,
-        COUNT(*)                                                            AS total_resolved,
-        SUM(t.transaction_status = 'COMPLETED')                             AS completed,
-        SUM(t.transaction_status = 'FAILED')                                AS failed,
-        ROUND(SUM(t.transaction_status = 'COMPLETED') / COUNT(*) * 100, 2)  AS conversion_rate_pct
-    FROM terminal_txns t
+        COUNT(*)                                                            AS count
+    FROM payment_transactions t
     JOIN dtpay_cp_products cpp ON cpp.id = t.cp_product_id
     JOIN dtpay_users u         ON u.id   = cpp.cp_id
     WHERE UPPER(cpp.status) = 'APPROVED'
       AND u.enabled = 1
-    GROUP BY t.product_id, t.product_name, t.country_name, cpp.id, u.id, u.email, u.company_name
-    HAVING total_resolved >= %(min_resolved)s
-    ORDER BY u.id, t.product_id;
+      AND t.date_time >= %(day_start)s
+      AND t.date_time <  %(day_end)s
+    GROUP BY t.product_id, t.product_name, t.country_name, t.agg_name,
+             t.transaction_status, cpp.id, u.id, u.email, u.company_name
 """
 
-REASON_BREAKDOWN_SQL = """
+# Same idea, grouped by day instead of collapsing the whole window -
+# feeds the within-week trend chart.
+DAILY_STATUS_COUNTS_SQL = """
     SELECT
         product_id,
+        DATE(date_time)     AS day,
+        agg_name             AS provider,
         transaction_status,
-        CASE
-            WHEN transaction_status = 'FAILED'
-                THEN SUBSTRING_INDEX(cb_error_message, '#', 1)
-            -- partner_error_message is sometimes just the generic
-            -- request-accepted placeholder ('Request completed
-            -- successfully...') even on a transaction that didn't
-            -- succeed overall - fall back to transaction_status
-            -- itself rather than surface that as if it were a reason.
-            WHEN partner_error_message IS NULL
-                 OR partner_error_message LIKE 'Request completed successfully%%'
-                THEN transaction_status
-            ELSE partner_error_message
-        END AS reason_code,
-        COUNT(*) AS occurrences
+        COUNT(*)             AS count
     FROM payment_transactions
-    WHERE transaction_status NOT IN ('QUEUED', 'COMPLETED')
-      AND date_time >= %(day_start)s
+    WHERE date_time >= %(day_start)s
       AND date_time <  %(day_end)s
-    GROUP BY product_id, transaction_status, reason_code
-    ORDER BY product_id, occurrences DESC;
+    GROUP BY product_id, DATE(date_time), agg_name, transaction_status
 """
 
-OPERATOR_BREAKDOWN_SQL = """
+# reason_code: cb_error_message is 'CODE#description' on pawapay's
+# checkout-stage failures (contains '#'); everything else falls back
+# to partner_error_message, or to transaction_status itself if
+# partner_error_message is empty or just the generic acceptance
+# placeholder. This is provider-agnostic on purpose - it's a content
+# check (does this field look like CODE#description), not a check
+# against a specific provider's status literal, so it doesn't need a
+# separate branch for razorpay, which barely uses cb_error_message at
+# all in what's been seen so far.
+REASON_COUNTS_SQL = """
+    SELECT
+        product_id,
+        agg_name AS provider,
+        transaction_status,
+        CASE
+            WHEN cb_error_message LIKE '%%#%%'
+                THEN SUBSTRING_INDEX(cb_error_message, '#', 1)
+            WHEN partner_error_message IS NULL
+                 OR partner_error_message LIKE 'Request completed successfully%%'
+                THEN COALESCE(transaction_status, 'UNKNOWN')
+            ELSE partner_error_message
+        END AS reason_code,
+        COUNT(*) AS count
+    FROM payment_transactions
+    WHERE date_time >= %(day_start)s
+      AND date_time <  %(day_end)s
+    GROUP BY product_id, agg_name, transaction_status, reason_code
+"""
+
+# Fetches both operator (pawapay's network) and channel (razorpay's
+# payment method) - providers.classify_operator_counts() picks the
+# right one per product's provider rather than this query guessing.
+OPERATOR_COUNTS_SQL = """
     SELECT
         product_id,
         operator,
-        COUNT(*)                                                          AS attempts,
-        SUM(status IN ('ACCEPTED', 'COMPLETED', 'Subscription_Created'))  AS operator_ok
+        channel,
+        status,
+        COUNT(*) AS count
     FROM payout_logs
     WHERE date_time >= %(day_start)s
       AND date_time <  %(day_end)s
-      AND operator IS NOT NULL
-    GROUP BY product_id, operator
-    ORDER BY product_id, attempts DESC;
-"""
-
-DAILY_METRICS_SQL = """
-    SELECT
-        product_id,
-        DATE(date_time)                                                     AS day,
-        COUNT(*)                                                            AS total_resolved,
-        SUM(transaction_status = 'COMPLETED')                               AS completed,
-        ROUND(SUM(transaction_status = 'COMPLETED') / COUNT(*) * 100, 2)    AS conversion_rate_pct
-    FROM payment_transactions
-    WHERE transaction_status != 'QUEUED'
-      AND date_time >= %(day_start)s
-      AND date_time <  %(day_end)s
-    GROUP BY product_id, DATE(date_time)
-    ORDER BY product_id, day;
+    GROUP BY product_id, operator, channel, status
 """
 
 
 def fetch_all(day_start, day_end, min_resolved=None, include_daily=False):
     """
-    Runs the extraction queries for the [day_start, day_end) window.
-    min_resolved defaults to config's MIN_RESOLVED_THRESHOLD - since
-    main.py calls this once for the current period and once for the
-    previous one, the same floor applies to both automatically, so a
-    service that's too thin in either period just comes back with no
-    comparison rather than a misleading one.
+    Runs the extraction queries for the [day_start, day_end) window
+    and classifies the results per-provider (see providers.py),
+    returning the same shape as before the provider split: a list of
+    per-product metric rows, a list of per-product reason rows, a
+    list of per-product operator/channel rows, and (if include_daily)
+    a list of per-product-per-day rows. min_resolved defaults to
+    config's MIN_RESOLVED_THRESHOLD.
 
-    include_daily also runs DAILY_METRICS_SQL and returns it as a 4th
-    value - only needed for the current week (the day-wise chart), not
-    the previous week, which is why it defaults to off.
+    include_daily only runs the daily breakdown - only needed for the
+    current week (the trend chart), not the previous week.
     """
     if min_resolved is None:
         min_resolved = MIN_RESOLVED_THRESHOLD
-    params = {"day_start": day_start, "day_end": day_end, "min_resolved": min_resolved}
+    params = {"day_start": day_start, "day_end": day_end}
+
     with get_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute(PRODUCT_METRICS_SQL, params)
-            product_metrics = _clean_rows(cur.fetchall())
+            cur.execute(STATUS_COUNTS_SQL, params)
+            status_counts = _clean_rows(cur.fetchall())
 
-            cur.execute(REASON_BREAKDOWN_SQL, params)
-            reason_breakdown = _clean_rows(cur.fetchall())
+            cur.execute(REASON_COUNTS_SQL, params)
+            reason_counts = _clean_rows(cur.fetchall())
 
-            cur.execute(OPERATOR_BREAKDOWN_SQL, params)
-            operator_breakdown = _clean_rows(cur.fetchall())
+            cur.execute(OPERATOR_COUNTS_SQL, params)
+            operator_counts = _clean_rows(cur.fetchall())
 
-            daily_metrics = []
+            daily_status_counts = []
             if include_daily:
-                cur.execute(DAILY_METRICS_SQL, params)
-                daily_metrics = _clean_rows(cur.fetchall())
+                cur.execute(DAILY_STATUS_COUNTS_SQL, params)
+                daily_status_counts = _clean_rows(cur.fetchall())
+
+    product_metrics = classify_status_counts(status_counts, min_resolved)
+
+    # Only keep reason/operator rows for products that actually made
+    # the cut above (approved, enabled, over the volume floor).
+    kept_product_ids = {p["product_id"] for p in product_metrics}
+    reason_rows = filter_reason_rows(
+        [r for r in reason_counts if r["product_id"] in kept_product_ids]
+    )
+    reason_breakdown = [
+        {"product_id": r["product_id"], "transaction_status": r["transaction_status"],
+         "reason_code": r["reason_code"], "occurrences": r["count"]}
+        for r in reason_rows
+    ]
+
+    operator_rows = [o for o in operator_counts if o["product_id"] in kept_product_ids]
+    # Tag each payout_logs row with its product's provider (payout_logs
+    # doesn't reliably carry its own agg_name the way payment_transactions
+    # does), then let providers.py pick operator vs channel per provider.
+    provider_by_product = {p["product_id"]: p["provider"] for p in product_metrics}
+    for row in operator_rows:
+        row["provider"] = provider_by_product.get(row["product_id"])
+    operator_breakdown = classify_operator_counts(operator_rows)
+
+    daily_metrics = []
+    if include_daily:
+        daily_rows = [d for d in daily_status_counts if d["product_id"] in kept_product_ids]
+        daily_metrics = classify_daily_counts(daily_rows)
 
     return product_metrics, reason_breakdown, operator_breakdown, daily_metrics

@@ -21,7 +21,18 @@ MIN_BAR_HEIGHT = 3  # visible stub for a 0% day rather than nothing
 
 
 def _humanize_reason(code):
-    return code.replace("_", " ").strip().lower()
+    if code is None:
+        return "an unspecified issue"
+    # Most reason codes are SCREAMING_SNAKE_CASE (INSUFFICIENT_BALANCE,
+    # INVALID_PAYER_FORMAT); a few (system-error rows with a NULL or
+    # exception_payout transaction_status) fall back to a full plain-
+    # English sentence instead ("Something went wrong. Please try
+    # again."). Blindly lowercasing/underscoring the latter reads as
+    # garbled mid-sentence, so only transform the code-shaped ones.
+    if code.isupper() or "_" in code:
+        return code.replace("_", " ").strip().lower()
+    stripped = code.rstrip(".!").strip()
+    return stripped[:1].lower() + stripped[1:] if stripped else stripped
 
 
 def _reason_phrase(reasons):
@@ -96,13 +107,13 @@ def _daily_chart_html(service):
     vol_range = f"{min(volumes)}-{max(volumes)}" if min(volumes) != max(volumes) else f"{volumes[0]}"
 
     return f"""
-    <p style="margin:14px 0 6px 0;font-size:12px;color:#888;font-weight:bold;">Daily conversion — {week_range}</p>
+    <p style="margin:14px 0 6px 0;font-size:12px;color:#888;font-weight:bold;">Daily conversion - {week_range}</p>
     <table style="border-collapse:collapse;">
       <tr>{''.join(pct_cells)}</tr>
       <tr>{''.join(bar_cells)}</tr>
       <tr>{''.join(date_cells)}</tr>
     </table>
-    <p style="margin:6px 0 0 0;font-size:11px;color:#aaa;">Daily volume ranged from {vol_range} resolved attempts — worth weighing against how much a single day's percentage swings.</p>
+    <p style="margin:6px 0 0 0;font-size:11px;color:#aaa;">Daily volume ranged from {vol_range} resolved attempts - worth weighing against how much a single day's percentage swings.</p>
     """
 
 

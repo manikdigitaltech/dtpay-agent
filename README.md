@@ -36,19 +36,33 @@ cron, e.g. 6am every Monday:
 ## Files
 
 - `config.py` — all settings, read from environment variables
-- `extract.py` — four queries: conversion metrics, reason breakdown,
-  operator breakdown, and a day-level breakdown within the week
-  (`DAILY_METRICS_SQL`, only fetched for the current week, not the
-  previous one). `PRODUCT_METRICS_SQL` excludes any service with fewer
-  than `MIN_RESOLVED_THRESHOLD` (default 100) resolved transactions in
-  the window, so low-volume noise never reaches Claude or the email at all
+- `providers.py` — **the provider-specific rules live here, not in SQL.**
+  DTPay routes products through different wallet providers (pawapay,
+  razorpay confirmed so far; ampere/thirdpay not live yet) with
+  different success markers (`COMPLETED` for pawapay, `AUTHORIZED` for
+  razorpay), different pending/excluded statuses, and different
+  meaningful comparison fields (`operator`/network for pawapay,
+  `channel`/payment method for razorpay, since `operator` is always
+  just `'razorpay'` there). `PROVIDER_RULES` is the single place that
+  knowledge lives; adding a provider once it's live is a new dict
+  entry, not new SQL or new queries
+- `extract.py` — fetches *raw counts* grouped by product, provider,
+  and status (via `agg_name`) — it no longer decides what counts as
+  "success" or "resolved" itself. `fetch_all()` hands those raw counts
+  to `providers.py`'s classification functions and returns the same
+  shape as before the provider split, so `rollup.py` downstream didn't
+  need to change. The volume floor (`MIN_RESOLVED_THRESHOLD`, default
+  100) is applied in Python after classification now, since "how many
+  resolved" depends on which statuses that product's provider excludes
 - `rollup.py` — groups per-product rows into one digest per partner,
   merges the current week's digest with the previous week's
   (`merge_with_previous`, adding a conversion-rate delta per service),
   and fills in a complete 7-day series per service (zeros for any day
   with no data) from the daily breakdown
 - `analyze.py` — calls Claude for the narrative + recommendations,
-  given both weeks' data plus the daily breakdown so it can write the
+  given both weeks' data, the daily breakdown, and which provider a
+  service uses (so it doesn't call a UPI/card channel a "network" the
+  way pawapay's actual mobile networks are) so it can write the
   comparison and name specific days itself (`notable_days` in its
   response - the exact dates its own summary calls out, so the chart
   and the words always point at the same days); every rule baked into
@@ -63,3 +77,10 @@ cron, e.g. 6am every Monday:
 - `email_sender.py` — sends it, or saves it to `review_output/`
 - `main.py` — `run_weekly()` runs the full chain for the most recently
   completed calendar week
+
+## Known gap
+
+If a service had activity last week but none this week, it won't
+appear in the email at all (current week's digest only contains
+services present in the current window) — silently dropped rather
+than flagged. Hasn't come up yet; worth adding if it does.

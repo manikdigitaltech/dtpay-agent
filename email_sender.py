@@ -16,12 +16,12 @@ def send_partner_email(digest, html_body):
     msg["Subject"] = f"Your DTPay performance summary - {digest['partner_name']}"
     msg["From"] = SMTP_CONFIG["from_address"]
     msg["To"] = digest["partner_email"]
-    msg.attach(MIMEText(html_body, "html"))
+    msg.attach(MIMEText(html_body, "html", "utf-8"))
 
     if REVIEW_MODE:
         os.makedirs(REVIEW_OUTPUT_DIR, exist_ok=True)
         path = os.path.join(REVIEW_OUTPUT_DIR, f"{digest['cp_id']}_{digest['partner_email']}.html")
-        with open(path, "w") as f:
+        with open(path, "w", encoding="utf-8") as f:
             f.write(html_body)
         print(f"[review mode] wrote {path} instead of emailing {digest['partner_email']}")
         return

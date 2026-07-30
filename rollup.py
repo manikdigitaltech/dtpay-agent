@@ -81,6 +81,7 @@ def rollup_by_partner(product_metrics, reason_breakdown, operator_breakdown, dai
             "product_name": row["product_name"],
             "country_code": row["country_code"],
             "country": resolve_country(row["country_code"]),
+            "provider": row["provider"],
             "total_resolved": row["total_resolved"],
             "completed": row["completed"],
             "failed": row["failed"],
