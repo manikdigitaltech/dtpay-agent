@@ -9,6 +9,15 @@ each excludes different pending-like statuses), so it lives in
 providers.py instead of being baked into SQL as literal strings that
 only happened to be correct for pawapay.
 
+Two-phase fetch: first find which cp_product_ids are even eligible
+(approved, enabled, opted into the weekly summary) - a cheap query
+against dtpay_cp_products/dtpay_users alone - then scope every other
+query to just those, via cp_product_id IN (...). Without this, the
+reason/operator/daily queries would scan every transaction for every
+partner in the window and only filter down to opted-in partners in
+Python afterward, which works but does a lot of unnecessary database
+work once there are partners who aren't opted in.
+
 See dtpay_daily_metrics_draft.sql for the original single-provider
 version of these queries and the earlier assumptions verified against
 real pawapay data before the provider split existed.
@@ -47,6 +56,18 @@ def _clean_rows(rows):
     return rows
 
 
+# Cheap on purpose: touches only the small config tables, not
+# payment_transactions/payout_logs, so it's fine to run unconditionally
+# before deciding whether the bigger queries are even worth running.
+ELIGIBLE_CP_PRODUCT_IDS_SQL = """
+    SELECT DISTINCT cpp.id AS cp_product_id
+    FROM dtpay_cp_products cpp
+    JOIN dtpay_users u ON u.id = cpp.cp_id
+    WHERE UPPER(cpp.status) = 'APPROVED'
+      AND u.enabled = 1
+      AND u.weekly_summary_enabled = 1
+"""
+
 # One row per (product, provider, transaction_status) combination in
 # the window - no HAVING threshold here, since "how many resolved"
 # depends on which statuses that product's provider excludes, decided
@@ -66,8 +87,7 @@ STATUS_COUNTS_SQL = """
     FROM payment_transactions t
     JOIN dtpay_cp_products cpp ON cpp.id = t.cp_product_id
     JOIN dtpay_users u         ON u.id   = cpp.cp_id
-    WHERE UPPER(cpp.status) = 'APPROVED'
-      AND u.enabled = 1
+    WHERE t.cp_product_id IN %(cp_product_ids)s
       AND t.date_time >= %(day_start)s
       AND t.date_time <  %(day_end)s
     GROUP BY t.product_id, t.product_name, t.country_name, t.agg_name,
@@ -84,7 +104,8 @@ DAILY_STATUS_COUNTS_SQL = """
         transaction_status,
         COUNT(*)             AS count
     FROM payment_transactions
-    WHERE date_time >= %(day_start)s
+    WHERE cp_product_id IN %(cp_product_ids)s
+      AND date_time >= %(day_start)s
       AND date_time <  %(day_end)s
     GROUP BY product_id, DATE(date_time), agg_name, transaction_status
 """
@@ -113,7 +134,8 @@ REASON_COUNTS_SQL = """
         END AS reason_code,
         COUNT(*) AS count
     FROM payment_transactions
-    WHERE date_time >= %(day_start)s
+    WHERE cp_product_id IN %(cp_product_ids)s
+      AND date_time >= %(day_start)s
       AND date_time <  %(day_end)s
     GROUP BY product_id, agg_name, transaction_status, reason_code
 """
@@ -129,7 +151,8 @@ OPERATOR_COUNTS_SQL = """
         status,
         COUNT(*) AS count
     FROM payout_logs
-    WHERE date_time >= %(day_start)s
+    WHERE cp_product_id IN %(cp_product_ids)s
+      AND date_time >= %(day_start)s
       AND date_time <  %(day_end)s
     GROUP BY product_id, operator, channel, status
 """
@@ -145,15 +168,31 @@ def fetch_all(day_start, day_end, min_resolved=None, include_daily=False):
     a list of per-product-per-day rows. min_resolved defaults to
     config's MIN_RESOLVED_THRESHOLD.
 
+    Looks up which cp_product_ids are eligible (approved, enabled,
+    opted into the weekly summary) first, and scopes every other
+    query to just those - if nobody's eligible, returns empty results
+    immediately rather than running the bigger queries at all.
+
     include_daily only runs the daily breakdown - only needed for the
     current week (the trend chart), not the previous week.
     """
     if min_resolved is None:
         min_resolved = MIN_RESOLVED_THRESHOLD
-    params = {"day_start": day_start, "day_end": day_end}
 
     with get_connection() as conn:
         with conn.cursor() as cur:
+            cur.execute(ELIGIBLE_CP_PRODUCT_IDS_SQL)
+            eligible_ids = tuple(row["cp_product_id"] for row in cur.fetchall())
+
+            if not eligible_ids:
+                return [], [], [], []
+
+            params = {
+                "day_start": day_start,
+                "day_end": day_end,
+                "cp_product_ids": eligible_ids,
+            }
+
             cur.execute(STATUS_COUNTS_SQL, params)
             status_counts = _clean_rows(cur.fetchall())
 
@@ -171,7 +210,7 @@ def fetch_all(day_start, day_end, min_resolved=None, include_daily=False):
     product_metrics = classify_status_counts(status_counts, min_resolved)
 
     # Only keep reason/operator rows for products that actually made
-    # the cut above (approved, enabled, over the volume floor).
+    # the cut above (over the volume floor too, not just eligible).
     kept_product_ids = {p["product_id"] for p in product_metrics}
     reason_rows = filter_reason_rows(
         [r for r in reason_counts if r["product_id"] in kept_product_ids]
