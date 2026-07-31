@@ -128,6 +128,36 @@ check needed); anyone else only ever gets their own `cp_id`'s
 products, and a `cp_product_id` that isn't theirs is a `403`, not a
 silent fallback to their own products.
 
+**No period-over-period comparison here, on purpose.** The weekly
+email always compares against the previous calendar week; this
+endpoint takes an arbitrary date range with no well-defined "previous
+period" (a first version reused the weekly prompt unmodified, and
+Claude correctly-but-uselessly wrote "there's no prior week to
+compare against" for a request that was never about weeks at all).
+`analyze.py`'s prompt only mentions comparison when a digest's
+services carry `compare_to_previous=True`, which only
+`rollup.merge_with_previous()` ever sets - this endpoint never calls
+it, so the concept doesn't exist in what Claude sees at all.
+
+**Range limited to `MAX_DATE_RANGE_DAYS` (`config.py`, default 7,
+inclusive of both `start_date` and `end_date`)** — a request beyond
+that gets a `400` (`{"detail": "Date range spans N days; the maximum
+allowed is 7."}`) rather than being processed. Change the limit by
+updating the env var and restarting the API process; no code change
+or redeploy needed.
+
+**Day-wise and hour-wise breakdowns are both included**, each
+product's response entry carries `daily` (one entry per day in the
+range, gap-filled with real zeros the same way the weekly chart is,
+generalized to however many days were actually requested rather than
+hardcoded to 7) and `hourly` (same idea at hour granularity, `null`
+instead of a list if the range is longer than
+`ON_DEMAND_MAX_HOURLY_DAYS` in `api.py`, currently 14 days - beyond
+that it's hundreds of rows and not actually more useful than the
+daily view). Claude sees both too, and can call out a specific day or
+hour by name in `notable_days`/`notable_hours` the same way the
+weekly email flags a standout day in its chart.
+
 No volume floor here (`ON_DEMAND_MIN_RESOLVED = 1` in `api.py`) —
 unlike the weekly email, which hides anything under
 `MIN_RESOLVED_THRESHOLD` so a partner never gets an alarming "0% of

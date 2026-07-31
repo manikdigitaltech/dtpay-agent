@@ -10,7 +10,7 @@ actually stores, despite the column being named country_name) into a
 proper full name for anything downstream that displays it.
 """
 from collections import defaultdict
-from datetime import timedelta
+from datetime import datetime, time, timedelta
 
 # Known country_code values seen in payment_transactions so far.
 # Falls back to showing the raw code for anything not listed here
@@ -35,7 +35,17 @@ def resolve_country(country_code):
     return COUNTRY_NAMES.get(country_code, country_code)
 
 
-def rollup_by_partner(product_metrics, reason_breakdown, operator_breakdown, daily_metrics=None, week_start=None):
+def rollup_by_partner(product_metrics, reason_breakdown, operator_breakdown,
+                       daily_metrics=None, range_start=None, range_end=None,
+                       hourly_metrics=None):
+    """
+    range_start/range_end (dates, range_end exclusive) fill gaps in
+    daily_metrics with real zeros for the whole requested range,
+    however many days that is - not hardcoded to 7, since the
+    on-demand API can be asked for any range, not just a week.
+    hourly_metrics gets the same gap-filling treatment, at hour
+    granularity, when given.
+    """
     reasons_by_product = defaultdict(list)
     for r in reason_breakdown:
         reasons_by_product[r["product_id"]].append(r)
@@ -48,10 +58,21 @@ def rollup_by_partner(product_metrics, reason_breakdown, operator_breakdown, dai
     for d in daily_metrics or []:
         daily_by_product[d["product_id"]][d["day"]] = d
 
-    # The full expected list of dates in the week, so a day with zero
-    # resolved transactions still shows up as a real zero rather than
-    # a gap - only possible to build this if week_start was given.
-    week_dates = [week_start + timedelta(days=i) for i in range(7)] if week_start else None
+    range_dates = None
+    if range_start and range_end:
+        num_days = (range_end - range_start).days
+        range_dates = [range_start + timedelta(days=i) for i in range(num_days)]
+
+    hourly_by_product = defaultdict(dict)
+    for h in hourly_metrics or []:
+        hourly_by_product[h["product_id"]][h["hour"]] = h
+
+    range_hours = None
+    if range_start and range_end:
+        start_dt = datetime.combine(range_start, time.min)
+        end_dt = datetime.combine(range_end, time.min)
+        num_hours = int((end_dt - start_dt).total_seconds() // 3600)
+        range_hours = [start_dt + timedelta(hours=i) for i in range(num_hours)]
 
     partners = {}
     for row in product_metrics:
@@ -65,12 +86,24 @@ def rollup_by_partner(product_metrics, reason_breakdown, operator_breakdown, dai
             }
 
         daily_series = []
-        if week_dates:
+        if range_dates is not None:
             product_daily = daily_by_product.get(row["product_id"], {})
-            for d in week_dates:
+            for d in range_dates:
                 entry = product_daily.get(d)
                 daily_series.append({
                     "date": d,
+                    "total_resolved": entry["total_resolved"] if entry else 0,
+                    "completed": entry["completed"] if entry else 0,
+                    "conversion_rate_pct": entry["conversion_rate_pct"] if entry else 0.0,
+                })
+
+        hourly_series = []
+        if range_hours is not None and hourly_metrics is not None:
+            product_hourly = hourly_by_product.get(row["product_id"], {})
+            for h in range_hours:
+                entry = product_hourly.get(h)
+                hourly_series.append({
+                    "hour": h,
                     "total_resolved": entry["total_resolved"] if entry else 0,
                     "completed": entry["completed"] if entry else 0,
                     "conversion_rate_pct": entry["conversion_rate_pct"] if entry else 0.0,
@@ -89,6 +122,7 @@ def rollup_by_partner(product_metrics, reason_breakdown, operator_breakdown, dai
             "reasons": reasons_by_product.get(row["product_id"], []),
             "operators": operators_by_product.get(row["product_id"], []),
             "daily": daily_series,
+            "hourly": hourly_series,
         })
 
     return list(partners.values())
@@ -97,8 +131,13 @@ def rollup_by_partner(product_metrics, reason_breakdown, operator_breakdown, dai
 def merge_with_previous(current_digests, previous_digests):
     """
     Adds the previous period's figures and a conversion-rate delta to
-    each service in current_digests, matched by (cp_id, product_id).
-    Mutates and returns current_digests.
+    each service in current_digests, matched by (cp_id, product_id),
+    and marks every service as compare_to_previous=True so analyze.py
+    knows a period-over-period comparison is actually a meaningful
+    concept here (the weekly email always calls this; the on-demand
+    API never does, so its services stay compare_to_previous=False
+    and Claude is never even shown the concept, let alone told to
+    comment on it being absent). Mutates and returns current_digests.
 
     Known gap: a service with previous-period activity but none this
     period won't appear at all (current_digests only has services
@@ -113,6 +152,7 @@ def merge_with_previous(current_digests, previous_digests):
 
     for digest in current_digests:
         for service in digest["services"]:
+            service["compare_to_previous"] = True
             prev = previous_by_key.get((digest["cp_id"], service["product_id"]))
             if prev:
                 service["previous_total_resolved"] = prev["total_resolved"]

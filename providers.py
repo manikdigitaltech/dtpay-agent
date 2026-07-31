@@ -102,28 +102,29 @@ def classify_status_counts(rows, min_resolved):
     return results
 
 
-def classify_daily_counts(rows):
+def _classify_by_period(rows, period_field):
     """
-    Same idea as classify_status_counts but grouped by (product_id,
-    day) for the within-week trend chart. No min_resolved filter here
-    - that's a weekly-total concept; every day is included regardless
-    of its own volume, and the chart's own volume caption is what
-    flags a thin day, not exclusion.
+    Shared logic behind classify_daily_counts/classify_hourly_counts:
+    groups by (product_id, that period value) and applies the
+    product's provider rules. No min_resolved filter - that's a
+    whole-range concept; every period is included regardless of its
+    own volume, and it's on the caller to show volume alongside the
+    rate so a thin period doesn't get over-read.
     """
     by_key = defaultdict(list)
     for row in rows:
-        by_key[(row["product_id"], row["day"])].append(row)
+        by_key[(row["product_id"], row[period_field])].append(row)
 
     results = []
-    for (product_id, day), day_rows in by_key.items():
-        provider = day_rows[0]["provider"]
+    for (product_id, period_value), period_rows in by_key.items():
+        provider = period_rows[0]["provider"]
         rules = PROVIDER_RULES.get(provider)
         if rules is None:
             continue
 
         total_resolved = 0
         completed = 0
-        for row in day_rows:
+        for row in period_rows:
             status = row["transaction_status"]
             if status in rules["excluded_statuses"]:
                 continue
@@ -133,12 +134,23 @@ def classify_daily_counts(rows):
 
         results.append({
             "product_id": product_id,
-            "day": day,
+            period_field: period_value,
             "total_resolved": total_resolved,
             "completed": completed,
             "conversion_rate_pct": round(completed / total_resolved * 100, 2) if total_resolved else 0.0,
         })
     return results
+
+
+def classify_daily_counts(rows):
+    """Per (product_id, day) - feeds the weekly email's trend chart."""
+    return _classify_by_period(rows, "day")
+
+
+def classify_hourly_counts(rows):
+    """Per (product_id, hour) - feeds the on-demand API's hour-level
+    breakdown, only computed for short enough ranges (see api.py)."""
+    return _classify_by_period(rows, "hour")
 
 
 def filter_reason_rows(rows):

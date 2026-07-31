@@ -24,6 +24,12 @@ ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 # hits produces a meaningless conversion rate either way.
 MIN_RESOLVED_THRESHOLD = int(os.environ.get("MIN_RESOLVED_THRESHOLD", "100"))
 
+# The on-demand API rejects any request spanning more than this many
+# days (inclusive of both start_date and end_date) rather than
+# processing it - change by updating this env var and restarting the
+# API process, no code change or redeploy needed.
+MAX_DATE_RANGE_DAYS = int(os.environ.get("MAX_DATE_RANGE_DAYS", "7"))
+
 SMTP_CONFIG = {
     "host": os.environ.get("SMTP_HOST", "localhost"),
     "port": int(os.environ.get("SMTP_PORT", "587")),

@@ -29,6 +29,7 @@ from config import DB_CONFIG, MIN_RESOLVED_THRESHOLD
 from providers import (
     classify_status_counts,
     classify_daily_counts,
+    classify_hourly_counts,
     filter_reason_rows,
     classify_operator_counts,
 )
@@ -119,6 +120,24 @@ DAILY_STATUS_COUNTS_SQL = """
     GROUP BY product_id, DATE(date_time), agg_name, transaction_status
 """
 
+# Same idea again, truncated to the hour - only requested for short
+# enough ranges (see api.py's ON_DEMAND_MAX_HOURLY_DAYS), since a
+# multi-week hourly breakdown would be hundreds of rows and not
+# actually more useful than the daily one.
+HOURLY_STATUS_COUNTS_SQL = """
+    SELECT
+        product_id,
+        DATE_ADD(DATE(date_time), INTERVAL HOUR(date_time) HOUR) AS hour,
+        agg_name                                                  AS provider,
+        transaction_status,
+        COUNT(*)                                                  AS count
+    FROM payment_transactions
+    WHERE cp_product_id IN %(cp_product_ids)s
+      AND date_time >= %(day_start)s
+      AND date_time <  %(day_end)s
+    GROUP BY product_id, hour, agg_name, transaction_status
+"""
+
 # reason_code: cb_error_message is 'CODE#description' on pawapay's
 # checkout-stage failures (contains '#'); everything else falls back
 # to partner_error_message, or to transaction_status itself if
@@ -165,29 +184,27 @@ OPERATOR_COUNTS_SQL = """
 """
 
 
-def fetch_all(day_start, day_end, cp_product_ids, min_resolved=None, include_daily=False):
+def fetch_all(day_start, day_end, cp_product_ids, min_resolved=None, include_daily=False, include_hourly=False):
     """
     Runs the extraction queries for the [day_start, day_end) window,
     scoped to exactly the given cp_product_ids, and classifies the
     results per-provider (see providers.py). Returns a list of
     per-product metric rows, a list of per-product reason rows, a
-    list of per-product operator/channel rows, and (if include_daily)
-    a list of per-product-per-day rows. min_resolved defaults to
-    config's MIN_RESOLVED_THRESHOLD.
+    list of per-product operator/channel rows, a list of
+    per-product-per-day rows (if include_daily), and a list of
+    per-product-per-hour rows (if include_hourly). min_resolved
+    defaults to config's MIN_RESOLVED_THRESHOLD.
 
     cp_product_ids is the caller's responsibility to resolve - this
     function doesn't know or care whether that's "everyone opted into
     the weekly email" or "this one admin/user's allowed products for
     an API request". An empty tuple returns empty results immediately
     without touching payment_transactions/payout_logs at all.
-
-    include_daily only runs the daily breakdown - only needed for the
-    current week (the trend chart), not the previous week.
     """
     if min_resolved is None:
         min_resolved = MIN_RESOLVED_THRESHOLD
     if not cp_product_ids:
-        return [], [], [], []
+        return [], [], [], [], []
 
     params = {
         "day_start": day_start,
@@ -211,10 +228,16 @@ def fetch_all(day_start, day_end, cp_product_ids, min_resolved=None, include_dai
                 cur.execute(DAILY_STATUS_COUNTS_SQL, params)
                 daily_status_counts = _clean_rows(cur.fetchall())
 
+            hourly_status_counts = []
+            if include_hourly:
+                cur.execute(HOURLY_STATUS_COUNTS_SQL, params)
+                hourly_status_counts = _clean_rows(cur.fetchall())
+
     product_metrics = classify_status_counts(status_counts, min_resolved)
 
-    # Only keep reason/operator rows for products that actually made
-    # the cut above (over the volume floor too, not just in scope).
+    # Only keep reason/operator/daily/hourly rows for products that
+    # actually made the cut above (over the volume floor too, not
+    # just in scope).
     kept_product_ids = {p["product_id"] for p in product_metrics}
     reason_rows = filter_reason_rows(
         [r for r in reason_counts if r["product_id"] in kept_product_ids]
@@ -239,4 +262,9 @@ def fetch_all(day_start, day_end, cp_product_ids, min_resolved=None, include_dai
         daily_rows = [d for d in daily_status_counts if d["product_id"] in kept_product_ids]
         daily_metrics = classify_daily_counts(daily_rows)
 
-    return product_metrics, reason_breakdown, operator_breakdown, daily_metrics
+    hourly_metrics = []
+    if include_hourly:
+        hourly_rows = [h for h in hourly_status_counts if h["product_id"] in kept_product_ids]
+        hourly_metrics = classify_hourly_counts(hourly_rows)
+
+    return product_metrics, reason_breakdown, operator_breakdown, daily_metrics, hourly_metrics

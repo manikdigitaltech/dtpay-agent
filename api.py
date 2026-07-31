@@ -15,6 +15,14 @@ response below is flattened back into one list), so an ADMIN request
 spanning many partners makes one call per partner, not one giant call
 mixing everyone together.
 
+Deliberately does NOT call merge_with_previous() - an arbitrary date
+range (a day, four days, whatever the dashboard's picker is set to)
+has no well-defined "previous period" to compare against the way a
+calendar week does, so this endpoint never claims one. analyze.py's
+prompt only mentions period-over-period comparison at all when a
+digest's services carry compare_to_previous=True, which only
+merge_with_previous() ever sets.
+
 Run with: uvicorn api:app --host 0.0.0.0 --port 8000
 """
 from datetime import date, datetime, timedelta, timezone
@@ -24,6 +32,7 @@ from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 
 from auth import authenticate, get_role, resolve_cp_product_ids, AuthError
+from config import MAX_DATE_RANGE_DAYS
 from extract import fetch_all
 from rollup import rollup_by_partner
 from analyze import analyze_partner
@@ -37,6 +46,12 @@ app = FastAPI()
 # silently drop what's already visible on screen. analyze.py's system
 # prompt is told to flag low volume explicitly instead of hiding it.
 ON_DEMAND_MIN_RESOLVED = 1
+
+# Hourly breakdown is only worth computing (and asking Claude to look
+# for hour-level patterns in) for a range short enough that it stays
+# readable - beyond this, it's hundreds of rows and the daily
+# breakdown alone is the more useful view.
+ON_DEMAND_MAX_HOURLY_DAYS = 14
 
 
 class SummaryRequest(BaseModel):
@@ -64,14 +79,29 @@ def create_summary(request: SummaryRequest, authorization: str = Header(...)):
     except AuthError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message)
 
+    range_days = (request.end_date - request.start_date).days + 1
+    if range_days > MAX_DATE_RANGE_DAYS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Date range spans {range_days} days; the maximum allowed is {MAX_DATE_RANGE_DAYS}.",
+        )
+
     day_start = datetime.combine(request.start_date, datetime.min.time())
     day_end = datetime.combine(request.end_date, datetime.min.time()) + timedelta(days=1)
+    include_hourly = range_days <= ON_DEMAND_MAX_HOURLY_DAYS
 
-    product_metrics, reason_breakdown, operator_breakdown, _ = fetch_all(
-        day_start, day_end, cp_product_ids, min_resolved=ON_DEMAND_MIN_RESOLVED
+    product_metrics, reason_breakdown, operator_breakdown, daily_metrics, hourly_metrics = fetch_all(
+        day_start, day_end, cp_product_ids,
+        min_resolved=ON_DEMAND_MIN_RESOLVED,
+        include_daily=True,
+        include_hourly=include_hourly,
     )
 
-    digests = rollup_by_partner(product_metrics, reason_breakdown, operator_breakdown)
+    digests = rollup_by_partner(
+        product_metrics, reason_breakdown, operator_breakdown,
+        daily_metrics, request.start_date, request.end_date + timedelta(days=1),
+        hourly_metrics if include_hourly else None,
+    )
     for digest in digests:
         analyze_partner(digest)
 
@@ -94,6 +124,18 @@ def create_summary(request: SummaryRequest, authorization: str = Header(...)):
                 "conversion_rate_pct": service["conversion_rate_pct"],
                 "summary": service.get("summary", ""),
                 "recommendations": service.get("recommendations", []),
+                "notable_days": service.get("notable_days", []),
+                "notable_hours": service.get("notable_hours", []),
+                "daily": [
+                    {"date": d["date"].isoformat(), "total_resolved": d["total_resolved"],
+                     "completed": d["completed"], "conversion_rate_pct": d["conversion_rate_pct"]}
+                    for d in service.get("daily", [])
+                ],
+                "hourly": [
+                    {"hour": h["hour"].isoformat(), "total_resolved": h["total_resolved"],
+                     "completed": h["completed"], "conversion_rate_pct": h["conversion_rate_pct"]}
+                    for h in service.get("hourly", [])
+                ] if include_hourly else None,
             })
     products.sort(key=lambda p: (p["cp_id"], p["product_id"]))
 
