@@ -26,6 +26,11 @@ omitted from the payload entirely (not just left null), and the
 prompt never mentions period-over-period comparison at all, so
 there's nothing for Claude to comment on the absence of.
 
+Also sets digest["input_tokens"]/["output_tokens"] from the response
+(None if the call failed) so callers can log token usage without
+needing to touch the Claude call themselves - see chat_store.py and
+where main.py/api.py call log_message() after each analyze_partner().
+
 output_config / JSONOutputFormatParam usage confirmed directly against
 the installed anthropic SDK (0.120.2) and a live (auth-only-failing)
 request to api.anthropic.com. Some Anthropic documentation still shows
@@ -43,7 +48,7 @@ import logging
 
 import anthropic
 
-from config import ANTHROPIC_API_KEY
+from config import ANTHROPIC_API_KEY, CLAUDE_TIMEOUT_SECONDS, LOG_CLAUDE_PROMPTS
 
 MODEL = "claude-sonnet-5"
 STRUCTURED_OUTPUT_BETA = "structured-outputs-2025-11-13"
@@ -209,12 +214,21 @@ def analyze_partner(digest, client=None):
     in one digest always comes from the same caller, so checking the
     first one is enough.
     """
-    client = client or anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+    client = client or anthropic.Anthropic(api_key=ANTHROPIC_API_KEY, timeout=CLAUDE_TIMEOUT_SECONDS)
     compare_to_previous = bool(digest["services"]) and bool(digest["services"][0].get("compare_to_previous"))
     system_prompt = _build_system_prompt(compare_to_previous)
     payload = {"services": [_service_payload(s) for s in digest["services"]]}
 
     by_product = {}
+    digest["input_tokens"] = None
+    digest["output_tokens"] = None
+
+    if LOG_CLAUDE_PROMPTS:
+        logger.info(
+            "Claude request for cp_id=%s:\n--- system ---\n%s\n--- user message ---\n%s",
+            digest.get("cp_id"), system_prompt, json.dumps(payload, indent=2),
+        )
+
     try:
         response = client.beta.messages.create(
             model=MODEL,
@@ -225,6 +239,8 @@ def analyze_partner(digest, client=None):
             messages=[{"role": "user", "content": json.dumps(payload)}],
             output_config={"format": {"type": "json_schema", "schema": OUTPUT_SCHEMA}},
         )
+        digest["input_tokens"] = response.usage.input_tokens
+        digest["output_tokens"] = response.usage.output_tokens
     except Exception as exc:
         logger.error("Claude API call failed for cp_id=%s: %s", digest.get("cp_id"), exc)
         response = None
@@ -239,6 +255,8 @@ def analyze_partner(digest, client=None):
             )
         else:
             raw_text = "".join(text_blocks)
+            if LOG_CLAUDE_PROMPTS:
+                logger.info("Claude response for cp_id=%s:\n%s", digest.get("cp_id"), raw_text)
             try:
                 result = json.loads(raw_text)
                 by_product = {s["product_id"]: s for s in result["services"]}

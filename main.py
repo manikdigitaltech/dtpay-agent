@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, timezone
 from extract import fetch_all, get_weekly_eligible_cp_product_ids
 from rollup import rollup_by_partner, merge_with_previous
 from analyze import analyze_partner
+from chat_store import log_message
 from email_template import render_partner_email
 from email_sender import send_partner_email
 
@@ -35,10 +36,10 @@ def run_weekly(reference_date=None):
 
     eligible = get_weekly_eligible_cp_product_ids()
 
-    current_metrics, current_reasons, current_operators, current_daily, _ = fetch_all(
+    current_metrics, current_reasons, current_operators, current_daily, _, _, _ = fetch_all(
         week_start, week_end, eligible, include_daily=True
     )
-    previous_metrics, previous_reasons, previous_operators, _, _ = fetch_all(
+    previous_metrics, previous_reasons, previous_operators, _, _, _, _ = fetch_all(
         prev_week_start, prev_week_end, eligible
     )
 
@@ -51,6 +52,10 @@ def run_weekly(reference_date=None):
 
     for digest in current_digests:
         analyze_partner(digest)
+        log_message(
+            source="weekly_email", role="assistant", cp_id=digest.get("cp_id"),
+            input_tokens=digest.get("input_tokens"), output_tokens=digest.get("output_tokens"),
+        )
         html = render_partner_email(digest)
         send_partner_email(digest, html)
 

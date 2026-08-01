@@ -172,7 +172,7 @@ def filter_reason_rows(rows):
     return kept
 
 
-def classify_operator_counts(rows):
+def classify_operator_counts(rows, by_day=False):
     """
     Takes raw (product_id, provider, operator, channel, status, count)
     rows from payout_logs and picks the right comparison field per
@@ -180,6 +180,11 @@ def classify_operator_counts(rows):
     payout_success_statuses to judge whether each row was "ok" - a
     separate vocabulary from payment_transactions' success_statuses,
     since payout_logs doesn't always use the same status strings.
+
+    by_day=True additionally groups by each row's "day" field and
+    includes it in the result - used for the on-demand API's
+    day-level breakdown; the aggregate (by_day=False) case doesn't
+    need or expect a "day" key on the input rows at all.
     """
     by_key = defaultdict(lambda: {"attempts": 0, "operator_ok": 0})
     for row in rows:
@@ -189,17 +194,17 @@ def classify_operator_counts(rows):
         field_value = row.get(rules["comparison_field"])
         if field_value is None:
             continue
-        key = (row["product_id"], field_value)
+        key = (row["product_id"], row["day"], field_value) if by_day else (row["product_id"], field_value)
         by_key[key]["attempts"] += row["count"]
         if row["status"] in rules["payout_success_statuses"]:
             by_key[key]["operator_ok"] += row["count"]
 
     results = []
-    for (product_id, operator_value), counts in by_key.items():
-        results.append({
-            "product_id": product_id,
-            "operator": operator_value,
-            "attempts": counts["attempts"],
-            "operator_ok": counts["operator_ok"],
-        })
+    for key, counts in by_key.items():
+        entry = {"attempts": counts["attempts"], "operator_ok": counts["operator_ok"]}
+        if by_day:
+            entry["product_id"], entry["day"], entry["operator"] = key
+        else:
+            entry["product_id"], entry["operator"] = key
+        results.append(entry)
     return results

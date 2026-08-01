@@ -37,7 +37,8 @@ def resolve_country(country_code):
 
 def rollup_by_partner(product_metrics, reason_breakdown, operator_breakdown,
                        daily_metrics=None, range_start=None, range_end=None,
-                       hourly_metrics=None):
+                       hourly_metrics=None, daily_reason_breakdown=None,
+                       daily_operator_breakdown=None):
     """
     range_start/range_end (dates, range_end exclusive) fill gaps in
     daily_metrics with real zeros for the whole requested range,
@@ -45,6 +46,14 @@ def rollup_by_partner(product_metrics, reason_breakdown, operator_breakdown,
     on-demand API can be asked for any range, not just a week.
     hourly_metrics gets the same gap-filling treatment, at hour
     granularity, when given.
+
+    daily_reason_breakdown/daily_operator_breakdown (both optional)
+    get attached directly to each day's entry in the resulting
+    "daily" series - not kept as a separate top-level structure -
+    since day-level numbers and that day's reasons/operators being
+    co-located is what makes "what happened on the 25th" answerable
+    from a single place in the data rather than needing to
+    cross-reference two separate arrays by date.
     """
     reasons_by_product = defaultdict(list)
     for r in reason_breakdown:
@@ -57,6 +66,14 @@ def rollup_by_partner(product_metrics, reason_breakdown, operator_breakdown,
     daily_by_product = defaultdict(dict)
     for d in daily_metrics or []:
         daily_by_product[d["product_id"]][d["day"]] = d
+
+    daily_reasons_by_product_day = defaultdict(list)
+    for r in daily_reason_breakdown or []:
+        daily_reasons_by_product_day[(r["product_id"], r["day"])].append(r)
+
+    daily_operators_by_product_day = defaultdict(list)
+    for o in daily_operator_breakdown or []:
+        daily_operators_by_product_day[(o["product_id"], o["day"])].append(o)
 
     range_dates = None
     if range_start and range_end:
@@ -95,6 +112,8 @@ def rollup_by_partner(product_metrics, reason_breakdown, operator_breakdown,
                     "total_resolved": entry["total_resolved"] if entry else 0,
                     "completed": entry["completed"] if entry else 0,
                     "conversion_rate_pct": entry["conversion_rate_pct"] if entry else 0.0,
+                    "reasons": daily_reasons_by_product_day.get((row["product_id"], d), []),
+                    "operators": daily_operators_by_product_day.get((row["product_id"], d), []),
                 })
 
         hourly_series = []

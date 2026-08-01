@@ -166,6 +166,35 @@ REASON_COUNTS_SQL = """
     GROUP BY product_id, agg_name, transaction_status, reason_code
 """
 
+# Same reason_code logic, broken out by day too - lets a chat question
+# like "what were the errors on the 25th" get answered instead of only
+# "what were the errors overall" (the gap that motivated adding this:
+# the aggregate breakdown alone was never enough for a day-specific
+# question). Only ever requested for a MAX_DATE_RANGE_DAYS-bounded
+# window (7 days by default), so this doesn't carry the same
+# row-count risk hourly breakdown does - no separate cap needed.
+DAILY_REASON_COUNTS_SQL = """
+    SELECT
+        product_id,
+        DATE(date_time) AS day,
+        agg_name AS provider,
+        transaction_status,
+        CASE
+            WHEN cb_error_message LIKE '%%#%%'
+                THEN SUBSTRING_INDEX(cb_error_message, '#', 1)
+            WHEN partner_error_message IS NULL
+                 OR partner_error_message LIKE 'Request completed successfully%%'
+                THEN COALESCE(transaction_status, 'UNKNOWN')
+            ELSE partner_error_message
+        END AS reason_code,
+        COUNT(*) AS count
+    FROM payment_transactions
+    WHERE cp_product_id IN %(cp_product_ids)s
+      AND date_time >= %(day_start)s
+      AND date_time <  %(day_end)s
+    GROUP BY product_id, DATE(date_time), agg_name, transaction_status, reason_code
+"""
+
 # Fetches both operator (pawapay's network) and channel (razorpay's
 # payment method) - providers.classify_operator_counts() picks the
 # right one per product's provider rather than this query guessing.
@@ -183,17 +212,45 @@ OPERATOR_COUNTS_SQL = """
     GROUP BY product_id, operator, channel, status
 """
 
+DAILY_OPERATOR_COUNTS_SQL = """
+    SELECT
+        product_id,
+        DATE(date_time) AS day,
+        operator,
+        channel,
+        status,
+        COUNT(*) AS count
+    FROM payout_logs
+    WHERE cp_product_id IN %(cp_product_ids)s
+      AND date_time >= %(day_start)s
+      AND date_time <  %(day_end)s
+    GROUP BY product_id, DATE(date_time), operator, channel, status
+"""
 
-def fetch_all(day_start, day_end, cp_product_ids, min_resolved=None, include_daily=False, include_hourly=False):
+
+def fetch_all(day_start, day_end, cp_product_ids, min_resolved=None, include_daily=False,
+               include_hourly=False, include_daily_reasons=False):
     """
     Runs the extraction queries for the [day_start, day_end) window,
     scoped to exactly the given cp_product_ids, and classifies the
     results per-provider (see providers.py). Returns a list of
     per-product metric rows, a list of per-product reason rows, a
     list of per-product operator/channel rows, a list of
-    per-product-per-day rows (if include_daily), and a list of
-    per-product-per-hour rows (if include_hourly). min_resolved
-    defaults to config's MIN_RESOLVED_THRESHOLD.
+    per-product-per-day rows (if include_daily), a list of
+    per-product-per-hour rows (if include_hourly), a list of
+    per-product-per-day reason rows (if include_daily_reasons), and a
+    list of per-product-per-day operator rows (if
+    include_daily_reasons). min_resolved defaults to config's
+    MIN_RESOLVED_THRESHOLD.
+
+    include_daily_reasons is separate from include_daily on purpose -
+    the weekly email wants the daily total_resolved/completed chart
+    but has no use for a day-level reason/operator breakdown (its
+    summary only ever discusses reasons in aggregate), so it isn't
+    charged for two extra queries it would never use. The on-demand
+    API's chat feature is what actually needs this, to answer a
+    question like "what were the errors on the 25th" instead of only
+    being able to answer it in aggregate across the whole range.
 
     cp_product_ids is the caller's responsibility to resolve - this
     function doesn't know or care whether that's "everyone opted into
@@ -204,7 +261,7 @@ def fetch_all(day_start, day_end, cp_product_ids, min_resolved=None, include_dai
     if min_resolved is None:
         min_resolved = MIN_RESOLVED_THRESHOLD
     if not cp_product_ids:
-        return [], [], [], [], []
+        return [], [], [], [], [], [], []
 
     params = {
         "day_start": day_start,
@@ -232,6 +289,14 @@ def fetch_all(day_start, day_end, cp_product_ids, min_resolved=None, include_dai
             if include_hourly:
                 cur.execute(HOURLY_STATUS_COUNTS_SQL, params)
                 hourly_status_counts = _clean_rows(cur.fetchall())
+
+            daily_reason_counts = []
+            daily_operator_counts = []
+            if include_daily_reasons:
+                cur.execute(DAILY_REASON_COUNTS_SQL, params)
+                daily_reason_counts = _clean_rows(cur.fetchall())
+                cur.execute(DAILY_OPERATOR_COUNTS_SQL, params)
+                daily_operator_counts = _clean_rows(cur.fetchall())
 
     product_metrics = classify_status_counts(status_counts, min_resolved)
 
@@ -267,4 +332,22 @@ def fetch_all(day_start, day_end, cp_product_ids, min_resolved=None, include_dai
         hourly_rows = [h for h in hourly_status_counts if h["product_id"] in kept_product_ids]
         hourly_metrics = classify_hourly_counts(hourly_rows)
 
-    return product_metrics, reason_breakdown, operator_breakdown, daily_metrics, hourly_metrics
+    daily_reason_breakdown = []
+    daily_operator_breakdown = []
+    if include_daily_reasons:
+        daily_reason_rows = filter_reason_rows(
+            [r for r in daily_reason_counts if r["product_id"] in kept_product_ids]
+        )
+        daily_reason_breakdown = [
+            {"product_id": r["product_id"], "day": r["day"], "transaction_status": r["transaction_status"],
+             "reason_code": r["reason_code"], "occurrences": r["count"]}
+            for r in daily_reason_rows
+        ]
+
+        daily_operator_rows = [o for o in daily_operator_counts if o["product_id"] in kept_product_ids]
+        for row in daily_operator_rows:
+            row["provider"] = provider_by_product.get(row["product_id"])
+        daily_operator_breakdown = classify_operator_counts(daily_operator_rows, by_day=True)
+
+    return (product_metrics, reason_breakdown, operator_breakdown, daily_metrics,
+        hourly_metrics, daily_reason_breakdown, daily_operator_breakdown)

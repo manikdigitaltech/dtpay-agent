@@ -33,6 +33,47 @@ cron, e.g. 6am every Monday:
 0 6 * * 1  cd /path/to/project && /path/to/venv/bin/python main.py
 ```
 
+## Timeouts, and diagnosing a hung request
+
+Every DB connection and every Claude call is bounded by a timeout
+(`DB_CONNECT_TIMEOUT_SECONDS`, `DB_READ_TIMEOUT_SECONDS`,
+`CLAUDE_TIMEOUT_SECONDS` in `.env` / `config.py`) - this wasn't true
+until a real request to `/summary` hung for 10+ minutes with no
+response and no error. Without a timeout, a stuck connection or an
+unreachable API has exactly one way to fail: forever, silently,
+tying up a thread and a DB connection the whole time. With one, the
+same problem becomes a normal, fast error instead.
+
+If a request hangs despite this (or before upgrading to a build that
+has these timeouts), the fastest way to tell which side it's on:
+`SHOW FULL PROCESSLIST;` against MySQL while it's still hanging. A
+query still running against `payment_transactions` or `payout_logs`
+means the DB side; nothing unusual there means it's most likely stuck
+on the Claude API call instead (check outbound network access to
+`api.anthropic.com` from wherever this runs).
+
+**If it turns out to be the DB side**, the likely cause is a missing
+index — every query in `extract.py` filters on `cp_product_id IN
+(...)` and a `date_time` range, and testing this project never ran
+against a table anywhere near production size, so an absent index
+here would never have shown up as a problem until now. Worth
+confirming with `EXPLAIN` on the actual query, and if it's not using
+an index, adding one:
+```sql
+CREATE INDEX idx_payment_transactions_cp_product_date
+    ON payment_transactions (cp_product_id, date_time);
+CREATE INDEX idx_payout_logs_cp_product_date
+    ON payout_logs (cp_product_id, date_time);
+```
+
+**To see exactly what's being sent to and received from Claude**, set
+`LOG_CLAUDE_PROMPTS=true` and restart. Every call (weekly email,
+dashboard summary, chat) then writes its full system prompt, message
+payload, and raw response text to `agent.log` before/after sending -
+off by default since a payload can run to several KB per call
+(especially with hourly data included), so it's meant for active
+debugging, not left on in normal operation.
+
 ## Files
 
 - `config.py` — all settings, read from environment variables
@@ -72,7 +113,15 @@ cron, e.g. 6am every Monday:
   after `auth.py` resolves scope, so a non-admin request always
   becomes exactly one Claude call (their own partner's digest); an
   ADMIN request spanning several partners becomes one call per
-  partner, then flattens the results into one JSON response
+  partner, then flattens the results into one JSON response. Also
+  creates a chat session for every summary (`chat_store.create_session`)
+  and exposes `POST /chat` for the follow-up "Any Questions?" flow
+- `chat.py` — answers follow-up questions about a summary already
+  shown to the user. No tools, no DB/code access during the call - see
+  the module docstring for exactly what guarantees that and why
+- `chat_store.py` — database access for chat sessions and the unified
+  `agent_chat_logs` table (weekly email, dashboard summary, and chat
+  all log here, distinguished by a `source` column)
 - `rollup.py` — groups per-product rows into one digest per partner,
   merges the current week's digest with the previous week's
   (`merge_with_previous`, adding a conversion-rate delta per service),
@@ -166,6 +215,127 @@ already shows those same low-volume rows in plain sight. Hiding them
 here would just be inconsistent with what's already on screen.
 Analyze.py's system prompt is told to flag low volume explicitly
 instead of pretending a 1-attempt row is a real rate.
+
+The response also includes a `session_id` — every `/summary` call
+creates a chat session behind the scenes (see below) whether or not
+the user ever clicks "Any Questions?".
+
+## Chat ("Any Questions?")
+
+**`context_data` includes the reason and operator breakdowns, both in
+aggregate and per-day** — this wasn't true in the first version, and
+a real chat question ("what are the errors on the 25th?") surfaced
+it: the response only ever had `total_resolved`/`completed`/rate per
+day, never the failure reasons or operators behind them, so any
+reason- or operator-related question was unanswerable regardless of
+whether it was day-specific. Each product now carries a top-level
+`reasons`/`operators` (aggregate across the whole range) and, inside
+each entry in `daily`, a `reasons`/`operators` scoped to just that
+day - co-located with that day's numbers rather than a separate
+array the model would have to cross-reference by date.
+
+Run these once against your database before using either endpoint:
+
+```sql
+CREATE TABLE agent_chat_sessions (
+    id VARCHAR(36) PRIMARY KEY,
+    uid INT NOT NULL,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
+    cp_product_id INT,
+    context_data JSON NOT NULL,
+    created_at DATETIME NOT NULL,
+    expires_at DATETIME NOT NULL
+);
+
+CREATE TABLE agent_chat_logs (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    session_id VARCHAR(36),
+    uid INT,
+    cp_id INT,
+    source VARCHAR(20) NOT NULL,   -- 'weekly_email' | 'dashboard_summary' | 'chat'
+    role VARCHAR(10) NOT NULL,     -- 'user' | 'assistant'
+    message TEXT,
+    input_tokens INT,
+    output_tokens INT,
+    created_at DATETIME NOT NULL
+);
+```
+
+`agent_chat_logs` is the single place token usage is logged for
+**all three** Claude-calling paths, not just chat — `source`
+distinguishes them, and `session_id`/`uid`/`cp_id` are populated
+differently per source since each one has a different idea of "who
+triggered this": `weekly_email` rows have neither `session_id` nor
+`uid` (a scheduled job, not a person, triggers it) but do have
+`cp_id`; `dashboard_summary` rows have `uid` and `cp_id` but no
+`session_id` on the row itself (the session is the one just created,
+tracked in `agent_chat_sessions` instead); `chat` rows have both
+`session_id` and `uid`, one row per side of each exchange (`role`
+`'user'` for the question, `'assistant'` for the reply, the latter
+carrying the token counts).
+
+`POST /chat`:
+```json
+{
+  "uid": 122,
+  "session_id": "2fda4486-f5b2-4d6a-a649-ecdb0793a4e6",
+  "message": "Why did DRC dip on the 25th?"
+}
+```
+Same `Authorization: Bearer <jwt>` header as `/summary`. Auth is
+identical to `/summary`'s, plus one more check specific to chat: the
+session must belong to the requesting `uid`, or the requester must be
+`ADMIN` — `403` otherwise. Sessions expire 24h after the `/summary`
+call that created them (`SESSION_TTL_HOURS` in `chat_store.py`); past
+that, `410`. An unrecognized `session_id` is `404`.
+
+**Guardrails are architectural, not just prompted** — this was the
+explicit ask, so it's worth being precise about what's actually
+guaranteed versus what's merely instructed:
+- Claude gets **no tools** in `/chat`. No function-calling, no code
+  execution, no database access during the call - it only ever
+  receives the session's already-stored `context_data` (identical to
+  what `/summary` returned - nothing is re-queried live) plus text,
+  and returns text. There is no code path in `chat.py` or `api.py`
+  where the user's message reaches SQL, a shell, or any write
+  operation - not "the prompt says not to," but no such path exists.
+  Verified directly: sent `'; DROP TABLE dtpay_users; --` as a chat
+  message, got a normal `200` back, and confirmed both that
+  `dtpay_users` was untouched and that the literal string was stored
+  as plain text in `agent_chat_logs.message`, never interpreted as SQL.
+- Staying on-topic (only answering from this session's data) and
+  reply length (1-2 sentences by default) are prompt-level, in
+  `chat.py`'s `CHAT_SYSTEM_PROMPT` - those are about response
+  quality, not about what the system will let happen, so they can't
+  be made architectural the same way.
+- Chat answers **are** allowed to state specific numbers directly
+  (unlike the summary text) - the number only ever appears once, in
+  the answer itself, so there's no duplicate-elsewhere-in-the-output
+  to drift out of sync with, unlike the summary/chart split that's
+  why `analyze.py` avoids it there.
+
+**Conversation history sent to Claude is capped at the last 5 rows**
+in `agent_chat_logs` for that session (`CHAT_HISTORY_LIMIT` in
+`chat_store.py`), not the full conversation - keeps a long
+back-and-forth from growing the request without bound. Worth being
+precise about what this means in practice: each turn logs 2 rows (the
+question, the answer), so 5 rows is roughly the last 2-3 exchanges,
+not 5 full question-answer pairs - flag it if you meant the latter,
+it's a one-line change (`CHAT_HISTORY_LIMIT = 10`).
+
+**Separately, `MAX_QUESTIONS_PER_SESSION` (`config.py`, default 5) is
+a hard cap on how many questions a session allows at all** - not to
+be confused with `CHAT_HISTORY_LIMIT` above, which only trims how
+much *history* gets resent to Claude and never blocks a message.
+This one counts `role='user'` rows for the session; the 5th question
+is answered normally, a 6th attempt gets a `429`
+(`{"detail": "This session has reached its limit of 5 questions.
+Generate a new summary to keep asking questions."}`) before it's
+logged or sent to Claude at all - a rejected attempt is never counted,
+so retrying doesn't dig the hole deeper, it just stays rejected.
+Change the limit the same way as `MAX_DATE_RANGE_DAYS`: update the
+env var, restart.
 
 ## Known gap
 

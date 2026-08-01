@@ -1,15 +1,24 @@
 """
-On-demand performance summary API.
+On-demand performance summary API, plus the follow-up chat.
 
-POST /summary with a JWT in the Authorization header and (uid,
-start_date, end_date, optionally cp_product_id) in the body - returns
-a JSON summary covering whichever products the requesting uid is
-allowed to see: every approved product (or just cp_product_id, if
-given) for an ADMIN; only that uid's own products for anyone else.
+POST /summary - JWT in the Authorization header, (uid, start_date,
+end_date, optionally cp_product_id) in the body - returns a JSON
+summary covering whichever products the requesting uid is allowed to
+see: every approved product (or just cp_product_id, if given) for an
+ADMIN; only that uid's own products for anyone else. Also creates a
+chat session (stores the exact data behind this summary) and returns
+its id as session_id, for the "Any Questions?" button to use.
+
+POST /chat - JWT in the header, (uid, session_id, message) in the
+body - answers a question about that session's data. See chat.py for
+the guardrail design (no tools, text in and text out only); this file
+just adds the ownership check (a session belongs to exactly the uid
+that created it, unless the requester is ADMIN) and the history/log
+plumbing around it.
 
 Reuses the same extract -> rollup -> analyze pipeline the weekly
-email uses - the only genuinely new logic here is auth.py and the
-HTTP plumbing. Each partner still gets exactly one Claude call
+email uses - the only genuinely new logic in /summary is auth.py and
+the HTTP plumbing. Each partner still gets exactly one Claude call
 (rollup_by_partner groups by partner internally even though the
 response below is flattened back into one list), so an ADMIN request
 spanning many partners makes one call per partner, not one giant call
@@ -27,15 +36,18 @@ Run with: uvicorn api:app --host 0.0.0.0 --port 8000
 """
 from datetime import date, datetime, timedelta, timezone
 from typing import Optional
+from uuid import uuid4
 
 from fastapi import FastAPI, Header, HTTPException
 from pydantic import BaseModel
 
 from auth import authenticate, get_role, resolve_cp_product_ids, AuthError
-from config import MAX_DATE_RANGE_DAYS
+from config import MAX_DATE_RANGE_DAYS, MAX_QUESTIONS_PER_SESSION
 from extract import fetch_all
 from rollup import rollup_by_partner
 from analyze import analyze_partner
+from chat import ask as ask_chat
+from chat_store import create_session, get_session, log_message, get_recent_messages, count_user_messages
 
 app = FastAPI()
 
@@ -61,11 +73,25 @@ class SummaryRequest(BaseModel):
     cp_product_id: Optional[int] = None
 
 
+class ChatRequest(BaseModel):
+    uid: int
+    session_id: str
+    message: str
+
+
 def _extract_token(authorization: str) -> str:
     prefix = "bearer "
     if authorization.lower().startswith(prefix):
         return authorization[len(prefix):].strip()
     return authorization.strip()
+
+
+def _format_reasons(reasons):
+    return [{"reason": r["reason_code"], "occurrences": r["occurrences"]} for r in reasons]
+
+
+def _format_operators(operators):
+    return [{"operator": o["operator"], "attempts": o["attempts"], "ok": o["operator_ok"]} for o in operators]
 
 
 @app.post("/summary")
@@ -90,20 +116,31 @@ def create_summary(request: SummaryRequest, authorization: str = Header(...)):
     day_end = datetime.combine(request.end_date, datetime.min.time()) + timedelta(days=1)
     include_hourly = range_days <= ON_DEMAND_MAX_HOURLY_DAYS
 
-    product_metrics, reason_breakdown, operator_breakdown, daily_metrics, hourly_metrics = fetch_all(
+    (product_metrics, reason_breakdown, operator_breakdown, daily_metrics,
+     hourly_metrics, daily_reason_breakdown, daily_operator_breakdown) = fetch_all(
         day_start, day_end, cp_product_ids,
         min_resolved=ON_DEMAND_MIN_RESOLVED,
         include_daily=True,
         include_hourly=include_hourly,
+        include_daily_reasons=True,
     )
 
     digests = rollup_by_partner(
         product_metrics, reason_breakdown, operator_breakdown,
         daily_metrics, request.start_date, request.end_date + timedelta(days=1),
         hourly_metrics if include_hourly else None,
+        daily_reason_breakdown, daily_operator_breakdown,
     )
+
+    session_id = str(uuid4())
+
     for digest in digests:
         analyze_partner(digest)
+        log_message(
+            source="dashboard_summary", role="assistant", session_id=session_id,
+            uid=request.uid, cp_id=digest.get("cp_id"),
+            input_tokens=digest.get("input_tokens"), output_tokens=digest.get("output_tokens"),
+        )
 
     products = []
     total_resolved = 0
@@ -126,9 +163,13 @@ def create_summary(request: SummaryRequest, authorization: str = Header(...)):
                 "recommendations": service.get("recommendations", []),
                 "notable_days": service.get("notable_days", []),
                 "notable_hours": service.get("notable_hours", []),
+                "reasons": _format_reasons(service.get("reasons", [])),
+                "operators": _format_operators(service.get("operators", [])),
                 "daily": [
                     {"date": d["date"].isoformat(), "total_resolved": d["total_resolved"],
-                     "completed": d["completed"], "conversion_rate_pct": d["conversion_rate_pct"]}
+                     "completed": d["completed"], "conversion_rate_pct": d["conversion_rate_pct"],
+                     "reasons": _format_reasons(d.get("reasons", [])),
+                     "operators": _format_operators(d.get("operators", []))}
                     for d in service.get("daily", [])
                 ],
                 "hourly": [
@@ -140,14 +181,73 @@ def create_summary(request: SummaryRequest, authorization: str = Header(...)):
     products.sort(key=lambda p: (p["cp_id"], p["product_id"]))
 
     overall_rate = round(total_completed / total_resolved * 100, 2) if total_resolved else 0.0
+    overall = {
+        "total_resolved": total_resolved,
+        "completed": total_completed,
+        "conversion_rate_pct": overall_rate,
+    }
+
+    # Same payload that's returned below becomes the chat session's
+    # grounding data - one structure, no separate re-serialization for
+    # storage vs. response.
+    context_data = {
+        "date_range": {"start": request.start_date.isoformat(), "end": request.end_date.isoformat()},
+        "overall": overall,
+        "products": products,
+    }
+    create_session(
+        session_id=session_id,
+        uid=request.uid, start_date=request.start_date, end_date=request.end_date,
+        cp_product_id=request.cp_product_id, context_data=context_data,
+    )
 
     return {
-        "date_range": {"start": request.start_date.isoformat(), "end": request.end_date.isoformat()},
-        "overall": {
-            "total_resolved": total_resolved,
-            "completed": total_completed,
-            "conversion_rate_pct": overall_rate,
-        },
+        "session_id": session_id,
+        "date_range": context_data["date_range"],
+        "overall": overall,
         "products": products,
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
+
+
+@app.post("/chat")
+def chat(request: ChatRequest, authorization: str = Header(...)):
+    token = _extract_token(authorization)
+
+    try:
+        authenticate(request.uid, token)
+        role_name = get_role(request.uid)
+    except AuthError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.message)
+
+    session = get_session(request.session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if datetime.now(timezone.utc) > session["expires_at"].replace(tzinfo=timezone.utc):
+        raise HTTPException(status_code=410, detail="Session expired")
+    # A session's context_data was already scoped to exactly what its
+    # creator (session["uid"]) was allowed to see when /summary built
+    # it - this only needs to confirm the requester IS that creator
+    # (or an admin), not re-derive product ownership from scratch.
+    if session["uid"] != request.uid and role_name != "ADMIN":
+        raise HTTPException(status_code=403, detail="This session does not belong to this user")
+
+    asked_so_far = count_user_messages(request.session_id)
+    if asked_so_far >= MAX_QUESTIONS_PER_SESSION:
+        raise HTTPException(
+            status_code=429,
+            detail=f"This session has reached its limit of {MAX_QUESTIONS_PER_SESSION} questions. Generate a new summary to keep asking questions.",
+        )
+
+    recent = get_recent_messages(request.session_id)
+
+    log_message(source="chat", role="user", session_id=request.session_id,
+                uid=request.uid, message=request.message)
+
+    answer, input_tokens, output_tokens = ask_chat(session["context_data"], recent, request.message)
+
+    log_message(source="chat", role="assistant", session_id=request.session_id,
+                uid=request.uid, message=answer,
+                input_tokens=input_tokens, output_tokens=output_tokens)
+
+    return {"session_id": request.session_id, "answer": answer}
