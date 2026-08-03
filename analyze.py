@@ -26,6 +26,17 @@ omitted from the payload entirely (not just left null), and the
 prompt never mentions period-over-period comparison at all, so
 there's nothing for Claude to comment on the absence of.
 
+Two token-reduction changes, both verified not to change what Claude
+actually sees: the system prompt is marked cache_control=ephemeral,
+so repeated calls in the same run (one per partner) read it from
+cache instead of reprocessing it fresh - the content is byte-identical
+either way, only the cost of repeating it changes. daily/hourly in
+_service_payload() use compact.to_compact_table() instead of a list
+of objects - a CSV-style table instead of repeating the same field
+names on every row - verified by round-tripping real extracted data
+back into the original list of dicts and confirming exact equality
+(compact.py's from_compact_table, used only in tests).
+
 Also sets digest["input_tokens"]/["output_tokens"] from the response
 (None if the call failed) so callers can log token usage without
 needing to touch the Claude call themselves - see chat_store.py and
@@ -49,6 +60,7 @@ import logging
 import anthropic
 
 from config import ANTHROPIC_API_KEY, CLAUDE_TIMEOUT_SECONDS, LOG_CLAUDE_PROMPTS
+from compact import to_compact_table
 
 MODEL = "claude-sonnet-5"
 STRUCTURED_OUTPUT_BETA = "structured-outputs-2025-11-13"
@@ -98,8 +110,8 @@ DTPay routes different products through different payment providers (e.g. pawapa
 For each service you're given, write:
 - summary: {summary_length_note} on what's actually happening, grounded in the failure/rejection reasons and operator data - not generic commentary. Refer to the service by its product_name and the country by its full name (both given to you) rather than an ID or abbreviation.{comparison_summary_note}{temporal_emphasis_note}
 - recommendations: 1-3 specific, actionable items tied to the actual data (a specific failure reason, a specific underperforming network or channel{recommendation_shift_note}), not generic advice like "improve your conversion rate."
-- notable_days: you're also given `daily`, a day-by-day breakdown. Only include a date here if your summary text explicitly names and discusses that day by weekday - never flag a day here that the summary doesn't actually talk about, since the report highlights these days visually and the reader will expect the text right below to explain why. Use this sparingly: only for a day that's a genuinely clear standout (a real dip or spike), not just modestly above or below the period's average{notable_days_priority_note}. A day with much lower volume than the others can look artificially swingy in its rate; weigh that before calling it notable at all.
-- notable_hours: you're also given `hourly`, an hour-by-hour breakdown covering the same period as `daily`, when the requested range is short enough for it to be included at all. If a specific hour (or a recurring time of day across multiple days) clearly stands out - a burst of volume, a spike or crash in conversion - name it in your summary and list its exact timestamp (the "hour" field) here, same bar as notable_days: a genuinely clear standout, only ever an hour you actually discuss, and weigh low volume before calling one out. If `hourly` is empty, leave this empty too.
+- notable_days: you're also given `daily`, a day-by-day breakdown given as a compact table: the first line names the columns (date, total_resolved, completed, conversion_rate_pct), and each line after that is one day's values in that same order, comma-separated - the same numbers a list of objects would give you, just not repeating the column names on every line. Only include a date here if your summary text explicitly names and discusses that day by weekday - never flag a day here that the summary doesn't actually talk about, since the report highlights these days visually and the reader will expect the text right below to explain why. Use this sparingly: only for a day that's a genuinely clear standout (a real dip or spike), not just modestly above or below the period's average{notable_days_priority_note}. A day with much lower volume than the others can look artificially swingy in its rate; weigh that before calling it notable at all.
+- notable_hours: you're also given `hourly`, an hour-by-hour breakdown covering the same period as `daily`, in the same compact table format (columns: hour, total_resolved, completed, conversion_rate_pct), when the requested range is short enough for it to be included at all - "(none)" if it wasn't. If a specific hour (or a recurring time of day across multiple days) clearly stands out - a burst of volume, a spike or crash in conversion - name it in your summary and list its exact timestamp (the "hour" column's value) here, same bar as notable_days: a genuinely clear standout, only ever an hour you actually discuss, and weigh low volume before calling one out. If `hourly` is "(none)", leave this empty too.
 
 Rules:
 - Never restate specific conversion percentages, counts, or figures in your text - those are shown to the partner separately, right next to your summary. This applies to daily and hourly figures too, not just the headline ones. Referring to categories ("insufficient balance", "one of the networks") or directional language ("improved", "worsened", "roughly doubled") is fine; restating "3.28%" or "1,401 of 42,684" is not.
@@ -166,24 +178,30 @@ def _service_payload(service):
             {"operator": o["operator"], "attempts": o["attempts"], "ok": o["operator_ok"]}
             for o in service["operators"]
         ],
-        "daily": [
-            {
-                "date": d["date"].isoformat(),
-                "total_resolved": d["total_resolved"],
-                "completed": d["completed"],
-                "conversion_rate_pct": d["conversion_rate_pct"],
-            }
-            for d in service.get("daily", [])
-        ],
-        "hourly": [
-            {
-                "hour": h["hour"].isoformat(),
-                "total_resolved": h["total_resolved"],
-                "completed": h["completed"],
-                "conversion_rate_pct": h["conversion_rate_pct"],
-            }
-            for h in service.get("hourly", [])
-        ],
+        "daily": to_compact_table(
+            [
+                {
+                    "date": d["date"].isoformat(),
+                    "total_resolved": d["total_resolved"],
+                    "completed": d["completed"],
+                    "conversion_rate_pct": d["conversion_rate_pct"],
+                }
+                for d in service.get("daily", [])
+            ],
+            columns=["date", "total_resolved", "completed", "conversion_rate_pct"],
+        ),
+        "hourly": to_compact_table(
+            [
+                {
+                    "hour": h["hour"].isoformat(),
+                    "total_resolved": h["total_resolved"],
+                    "completed": h["completed"],
+                    "conversion_rate_pct": h["conversion_rate_pct"],
+                }
+                for h in service.get("hourly", [])
+            ],
+            columns=["hour", "total_resolved", "completed", "conversion_rate_pct"],
+        ),
     }
 
     if service.get("compare_to_previous"):
@@ -222,6 +240,8 @@ def analyze_partner(digest, client=None):
     by_product = {}
     digest["input_tokens"] = None
     digest["output_tokens"] = None
+    digest["cache_creation_input_tokens"] = None
+    digest["cache_read_input_tokens"] = None
 
     if LOG_CLAUDE_PROMPTS:
         logger.info(
@@ -235,12 +255,14 @@ def analyze_partner(digest, client=None):
             max_tokens=4096,
             betas=[STRUCTURED_OUTPUT_BETA],
             thinking={"type": "disabled"},
-            system=system_prompt,
+            system=[{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}],
             messages=[{"role": "user", "content": json.dumps(payload)}],
             output_config={"format": {"type": "json_schema", "schema": OUTPUT_SCHEMA}},
         )
         digest["input_tokens"] = response.usage.input_tokens
         digest["output_tokens"] = response.usage.output_tokens
+        digest["cache_creation_input_tokens"] = getattr(response.usage, "cache_creation_input_tokens", None)
+        digest["cache_read_input_tokens"] = getattr(response.usage, "cache_read_input_tokens", None)
     except Exception as exc:
         logger.error("Claude API call failed for cp_id=%s: %s", digest.get("cp_id"), exc)
         response = None

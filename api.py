@@ -140,6 +140,8 @@ def create_summary(request: SummaryRequest, authorization: str = Header(...)):
             source="dashboard_summary", role="assistant", session_id=session_id,
             uid=request.uid, cp_id=digest.get("cp_id"),
             input_tokens=digest.get("input_tokens"), output_tokens=digest.get("output_tokens"),
+            cache_creation_input_tokens=digest.get("cache_creation_input_tokens"),
+            cache_read_input_tokens=digest.get("cache_read_input_tokens"),
         )
 
     products = []
@@ -244,10 +246,12 @@ def chat(request: ChatRequest, authorization: str = Header(...)):
     log_message(source="chat", role="user", session_id=request.session_id,
                 uid=request.uid, message=request.message)
 
-    answer, input_tokens, output_tokens = ask_chat(session["context_data"], recent, request.message)
+    result = ask_chat(session["context_data"], recent, request.message)
 
     log_message(source="chat", role="assistant", session_id=request.session_id,
-                uid=request.uid, message=answer,
-                input_tokens=input_tokens, output_tokens=output_tokens)
+                uid=request.uid, message=result["answer"],
+                input_tokens=result["input_tokens"], output_tokens=result["output_tokens"],
+                cache_creation_input_tokens=result["cache_creation_input_tokens"],
+                cache_read_input_tokens=result["cache_read_input_tokens"])
 
-    return {"session_id": request.session_id, "answer": answer}
+    return {"session_id": request.session_id, "answer": result["answer"]}

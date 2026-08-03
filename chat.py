@@ -17,12 +17,24 @@ Guardrails are architectural, not just prompted:
 - Staying on-topic and keeping answers short are prompt-level, since
   those are about response quality, not about what the system will
   let happen - CHAT_SYSTEM_PROMPT below is where that's enforced.
+
+Two token-reduction changes: the system prompt (which embeds the full
+context_data) is marked cache_control=ephemeral, so a session's
+repeated questions - the same context resent on every turn - read it
+from cache after the first call instead of reprocessing it fresh each
+time; the content Claude sees is byte-identical either way, only the
+cost of repeating it changes. Each product's hourly breakdown (never
+daily - see _compact_context_data's docstring for why) is rewritten
+as a compact table via compact.to_compact_table() instead of a list
+of objects - verified by round-tripping real extracted data back to
+the original list of dicts and confirming exact equality.
 """
 import logging
 
 import anthropic
 
 from config import ANTHROPIC_API_KEY, CLAUDE_TIMEOUT_SECONDS, LOG_CLAUDE_PROMPTS
+from compact import to_compact_table
 
 MODEL = "claude-sonnet-5"
 
@@ -33,7 +45,7 @@ if not logger.handlers:
     logger.addHandler(_handler)
     logger.setLevel(logging.INFO)
 
-CHAT_SYSTEM_PROMPT = """You are answering follow-up questions about a performance summary DTPay already generated and showed to a dashboard user. The exact data behind that summary - every product's numbers, reasons, operators, and daily/hourly breakdowns - is given to you below as JSON. That JSON is the only source of truth you have.
+CHAT_SYSTEM_PROMPT = """You are answering follow-up questions about a performance summary DTPay already generated and showed to a dashboard user. The exact data behind that summary - every product's numbers, reasons, operators, and daily/hourly breakdowns - is given to you below as JSON. That JSON is the only source of truth you have. Each product's `hourly` (when present) is given as a compact table rather than a list of objects: the first line names the columns (hour, total_resolved, completed, conversion_rate_pct), and each line after that is one hour's values in that same order, comma-separated - the same numbers a list of objects would give you, just not repeating the column names on every line.
 
 Answer only from that data. If a question asks about something it doesn't cover (a different date range, a different product, anything unrelated to this specific summary), say so plainly rather than guessing, estimating, or answering from general knowledge about DTPay or payments.
 
@@ -54,6 +66,38 @@ Data for this summary:
 FALLBACK_ANSWER = "Sorry, I couldn't process that question just now - please try again."
 
 
+def _compact_context_data(context_data):
+    """
+    Returns a new dict, same shape as context_data, with each
+    product's hourly breakdown rewritten as a compact table (see
+    compact.py) - never mutates the input, since context_data here is
+    the exact dict stored in agent_chat_sessions and read fresh on
+    every turn in the session; each call builds its own compacted
+    copy rather than touching the stored original.
+
+    daily is deliberately left untouched, unlike hourly: each day's
+    entry in context_data carries its own reasons/operators breakdown
+    (the fix for answering "what were the errors on day X"), which a
+    flat numeric table has no way to represent. hourly never had any
+    such per-row detail to lose - it's only ever
+    total_resolved/completed/conversion_rate_pct - and can run to
+    hundreds of rows for a longer range, so it's the one actually
+    worth compacting here; daily tops out at MAX_DATE_RANGE_DAYS rows,
+    where the savings wouldn't be worth the added risk anyway.
+    """
+    compacted = dict(context_data)
+    compacted["products"] = []
+    for product in context_data.get("products", []):
+        p = dict(product)
+        if p.get("hourly"):
+            p["hourly"] = to_compact_table(
+                p["hourly"],
+                columns=["hour", "total_resolved", "completed", "conversion_rate_pct"],
+            )
+        compacted["products"].append(p)
+    return compacted
+
+
 def ask(context_data, recent_messages, question, client=None):
     """
     context_data: the grounding data /summary generated for this
@@ -61,15 +105,27 @@ def ask(context_data, recent_messages, question, client=None):
     already JSON-serializable.
     recent_messages: the last few {"role", "message"} dicts for this
     session from chat_store.get_recent_messages(), oldest first.
-    Returns (answer_text, input_tokens, output_tokens). Any failure
-    returns FALLBACK_ANSWER and (None, None) rather than raising - a
-    chat answer failing shouldn't surface as a server error to
+    Returns a dict: answer, input_tokens, output_tokens,
+    cache_creation_input_tokens, cache_read_input_tokens. The last two
+    matter because of prompt caching (see module docstring) - a
+    cached system prompt shows up as a small input_tokens and a large
+    cache_read_input_tokens instead, so input_tokens alone drastically
+    understates what the call actually cost; log all of these, not
+    just input_tokens, or token tracking silently goes blind to most
+    of the cost the moment caching kicks in. Any failure returns
+    FALLBACK_ANSWER with every token field None rather than raising -
+    a chat answer failing shouldn't surface as a server error to
     someone typing in a popup. Logged to agent.log either way.
     """
     import json
 
+    failure_result = {
+        "answer": FALLBACK_ANSWER, "input_tokens": None, "output_tokens": None,
+        "cache_creation_input_tokens": None, "cache_read_input_tokens": None,
+    }
+
     client = client or anthropic.Anthropic(api_key=ANTHROPIC_API_KEY, timeout=CLAUDE_TIMEOUT_SECONDS)
-    system_prompt = CHAT_SYSTEM_PROMPT.format(context_json=json.dumps(context_data))
+    system_prompt = CHAT_SYSTEM_PROMPT.format(context_json=json.dumps(_compact_context_data(context_data)))
 
     messages = [{"role": m["role"], "content": m["message"]} for m in recent_messages]
     messages.append({"role": "user", "content": question})
@@ -85,22 +141,26 @@ def ask(context_data, recent_messages, question, client=None):
             model=MODEL,
             max_tokens=1024,
             thinking={"type": "disabled"},
-            system=system_prompt,
+            system=[{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}],
             messages=messages,
         )
     except Exception as exc:
         logger.error("Chat call failed: %s", exc)
-        return FALLBACK_ANSWER, None, None
+        return dict(failure_result)
 
     text_blocks = [block.text for block in response.content if getattr(block, "type", None) == "text"]
     if not text_blocks:
         block_types = [getattr(b, "type", type(b).__name__) for b in response.content]
         logger.error("Chat response had no text block - block types were: %s", block_types)
-        return FALLBACK_ANSWER, None, None
+        return dict(failure_result)
 
     answer = "".join(text_blocks)
     if LOG_CLAUDE_PROMPTS:
         logger.info("Chat response:\n%s", answer)
-    input_tokens = getattr(response.usage, "input_tokens", None)
-    output_tokens = getattr(response.usage, "output_tokens", None)
-    return answer, input_tokens, output_tokens
+    return {
+        "answer": answer,
+        "input_tokens": getattr(response.usage, "input_tokens", None),
+        "output_tokens": getattr(response.usage, "output_tokens", None),
+        "cache_creation_input_tokens": getattr(response.usage, "cache_creation_input_tokens", None),
+        "cache_read_input_tokens": getattr(response.usage, "cache_read_input_tokens", None),
+    }

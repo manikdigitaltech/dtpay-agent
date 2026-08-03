@@ -86,17 +86,28 @@ def get_session(session_id):
 
 
 def log_message(source, role, session_id=None, uid=None, cp_id=None, message=None,
-                 input_tokens=None, output_tokens=None):
+                 input_tokens=None, output_tokens=None,
+                 cache_creation_input_tokens=None, cache_read_input_tokens=None):
     """source: 'weekly_email' | 'dashboard_summary' | 'chat'. role:
     'user' | 'assistant'. The user's message text (chat only) is
     stored exactly as typed and only ever used as a string here - see
-    chat.py for why that's a guarantee, not just a description."""
+    chat.py for why that's a guarantee, not just a description.
+
+    cache_creation_input_tokens/cache_read_input_tokens are separate
+    from input_tokens on purpose, not folded into it - with prompt
+    caching on, input_tokens alone can look deceptively small (most
+    of a call's real input cost shows up as a cache read instead),
+    so collapsing them into one number would hide the thing this
+    table exists to show."""
     with get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 "INSERT INTO agent_chat_logs "
-                "(session_id, uid, cp_id, source, role, message, input_tokens, output_tokens, created_at) "
-                "VALUES (%(session_id)s, %(uid)s, %(cp_id)s, %(source)s, %(role)s, %(message)s, %(input_tokens)s, %(output_tokens)s, %(created_at)s)",
+                "(session_id, uid, cp_id, source, role, message, input_tokens, output_tokens, "
+                "cache_creation_input_tokens, cache_read_input_tokens, created_at) "
+                "VALUES (%(session_id)s, %(uid)s, %(cp_id)s, %(source)s, %(role)s, %(message)s, "
+                "%(input_tokens)s, %(output_tokens)s, %(cache_creation_input_tokens)s, "
+                "%(cache_read_input_tokens)s, %(created_at)s)",
                 {
                     "session_id": session_id,
                     "uid": uid,
@@ -106,6 +117,8 @@ def log_message(source, role, session_id=None, uid=None, cp_id=None, message=Non
                     "message": message,
                     "input_tokens": input_tokens,
                     "output_tokens": output_tokens,
+                    "cache_creation_input_tokens": cache_creation_input_tokens,
+                    "cache_read_input_tokens": cache_read_input_tokens,
                     "created_at": datetime.now(timezone.utc),
                 },
             )

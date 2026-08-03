@@ -55,6 +55,8 @@ def run_weekly(reference_date=None):
         log_message(
             source="weekly_email", role="assistant", cp_id=digest.get("cp_id"),
             input_tokens=digest.get("input_tokens"), output_tokens=digest.get("output_tokens"),
+            cache_creation_input_tokens=digest.get("cache_creation_input_tokens"),
+            cache_read_input_tokens=digest.get("cache_read_input_tokens"),
         )
         html = render_partner_email(digest)
         send_partner_email(digest, html)

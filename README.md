@@ -258,9 +258,21 @@ CREATE TABLE agent_chat_logs (
     message TEXT,
     input_tokens INT,
     output_tokens INT,
+    cache_creation_input_tokens INT,
+    cache_read_input_tokens INT,
     created_at DATETIME NOT NULL
 );
 ```
+
+**Once prompt caching (below) is in place, `input_tokens` alone
+badly understates real cost - `cache_creation_input_tokens` and
+`cache_read_input_tokens` are what actually catch it.** A real call
+in this session showed `input_tokens=15` for a question that clearly
+needed the full context behind it - that's not the call costing next
+to nothing, it's the cached portion (the bulk of the real cost)
+showing up in a different field entirely, one the logging didn't
+capture at first. All three fields together are the real input cost;
+`input_tokens` by itself is only the fresh, non-cached part.
 
 `agent_chat_logs` is the single place token usage is logged for
 **all three** Claude-calling paths, not just chat — `source`
@@ -336,6 +348,57 @@ logged or sent to Claude at all - a rejected attempt is never counted,
 so retrying doesn't dig the hole deeper, it just stays rejected.
 Change the limit the same way as `MAX_DATE_RANGE_DAYS`: update the
 env var, restart.
+
+## Token usage optimizations
+
+**Caching surfaced a real gap in the logging itself, since fixed:**
+`chat.ask()` now returns a dict (`answer`, `input_tokens`,
+`output_tokens`, `cache_creation_input_tokens`,
+`cache_read_input_tokens`) instead of a 3-item tuple - if anything
+outside `api.py` calls it directly, that call site needs updating.
+`analyze_partner()`'s digest gained the same two new keys. See the
+DDL above for why both new columns matter.
+
+Two changes, both verified to leave what Claude actually sees
+unchanged (or, for the one exception, verified to lose nothing that
+matters) - neither should affect summary or chat quality, only cost:
+
+**Prompt caching.** The system prompt in both `analyze.py` and
+`chat.py` is marked `cache_control: {"type": "ephemeral"}` - repeated
+calls with the same prefix read it from cache instead of reprocessing
+it fresh. This matters most for chat: the same `context_data` gets
+resent in full on every turn in a session (up to `MAX_QUESTIONS_PER_SESSION`
+times), and it's now the cached part rather than fully reprocessed
+each time. It also helps a weekly run or a multi-partner admin
+request in `analyze.py`, where the same prompt repeats once per
+partner. Verified the request shape is accepted by the real API
+(reached auth rejection, not a shape-validation error) on both the
+beta and standard endpoints.
+
+**Compact tables instead of repeating field names per row.**
+`compact.py`'s `to_compact_table()` turns a list of daily/hourly
+objects into one header line plus one line per row, comma-separated -
+same numbers, without restating `total_resolved`/`completed`/etc. on
+every single row. Verified with a real round-trip test: convert real
+extracted hourly data to the compact form, parse it back, and confirm
+it's exactly equal to the original list of dicts. On a single day's
+real hourly data this cut the JSON size by two-thirds.
+
+Applied differently in the two places that use it, because their
+`daily` fields aren't the same shape:
+- `analyze.py`'s `_service_payload()` compacts both `daily` and
+  `hourly` - neither ever carried per-row reasons/operators, so
+  there's nothing at risk.
+- `chat.py`'s `_compact_context_data()` compacts only `hourly`.
+  `context_data`'s `daily` (unlike `analyze.py`'s) carries each day's
+  own reasons/operators breakdown - the fix from a few turns back for
+  answering "what were the errors on day X" - and a flat numeric
+  table has no way to represent that, so compacting it would have
+  silently undone that fix. `daily` is left exactly as stored;
+  `hourly` never had that problem (it's only ever
+  total_resolved/completed/conversion_rate_pct) and can run to
+  hundreds of rows for a longer range, so it's where the real savings
+  are anyway.
 
 ## Known gap
 
