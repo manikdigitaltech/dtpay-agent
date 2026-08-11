@@ -29,21 +29,15 @@ as a compact table via compact.to_compact_table() instead of a list
 of objects - verified by round-tripping real extracted data back to
 the original list of dicts and confirming exact equality.
 """
-import logging
-
 import anthropic
 
 from config import ANTHROPIC_API_KEY, CLAUDE_TIMEOUT_SECONDS, LOG_CLAUDE_PROMPTS
 from compact import to_compact_table
+from logging_setup import get_agent_logger
 
 MODEL = "claude-sonnet-5"
 
-logger = logging.getLogger(__name__)
-if not logger.handlers:
-    _handler = logging.FileHandler("agent.log")
-    _handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
-    logger.addHandler(_handler)
-    logger.setLevel(logging.INFO)
+logger = get_agent_logger(__name__)
 
 CHAT_SYSTEM_PROMPT = """You are answering follow-up questions about a performance summary DTPay already generated and showed to a dashboard user. The exact data behind that summary - every product's numbers, reasons, operators, and daily/hourly breakdowns - is given to you below as JSON. That JSON is the only source of truth you have. Each product's `hourly` (when present) is given as a compact table rather than a list of objects: the first line names the columns (hour, total_resolved, completed, conversion_rate_pct), and each line after that is one hour's values in that same order, comma-separated - the same numbers a list of objects would give you, just not repeating the column names on every line.
 

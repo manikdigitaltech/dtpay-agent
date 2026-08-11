@@ -122,6 +122,11 @@ debugging, not left on in normal operation.
 - `chat_store.py` — database access for chat sessions and the unified
   `agent_chat_logs` table (weekly email, dashboard summary, and chat
   all log here, distinguished by a `source` column)
+- `cleanup_sessions.py` — deletes expired chat sessions; nothing else
+  does this automatically, so run it periodically (daily via cron or
+  Task Scheduler) or `agent_chat_sessions` grows unbounded
+- `logging_setup.py` — shared rotating logger for `agent.log`, used
+  by `analyze.py` and `chat.py`, so it doesn't grow forever
 - `rollup.py` — groups per-product rows into one digest per partner,
   merges the current week's digest with the previous week's
   (`merge_with_previous`, adding a conversion-rate delta per service),

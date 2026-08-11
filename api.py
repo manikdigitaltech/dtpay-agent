@@ -39,10 +39,11 @@ from typing import Optional
 from uuid import uuid4
 
 from fastapi import FastAPI, Header, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from auth import authenticate, get_role, resolve_cp_product_ids, AuthError
-from config import MAX_DATE_RANGE_DAYS, MAX_QUESTIONS_PER_SESSION
+from config import MAX_DATE_RANGE_DAYS, MAX_QUESTIONS_PER_SESSION, ALLOWED_ORIGINS
 from extract import fetch_all
 from rollup import rollup_by_partner
 from analyze import analyze_partner
@@ -50,6 +51,28 @@ from chat import ask as ask_chat
 from chat_store import create_session, get_session, log_message, get_recent_messages, count_user_messages
 
 app = FastAPI()
+
+# Deny-by-default: with ALLOWED_ORIGINS unset (empty list), no browser
+# origin is allowed to call this at all - set it to your dashboard's
+# real domain(s) before pointing a browser-based frontend at this.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["POST"],
+    allow_headers=["Authorization", "Content-Type"],
+)
+
+
+@app.get("/health")
+def health():
+    """Unauthenticated on purpose - a load balancer or uptime monitor
+    needs to reach this without a JWT. Returns nothing beyond a bare
+    OK; it deliberately doesn't touch the database, so it reflects
+    whether the API process itself is up, not whether the DB is
+    reachable - a DB-down state should show up as real request
+    failures, not as this endpoint also going red."""
+    return {"status": "ok"}
 
 # Unlike the weekly email, this endpoint has no real volume floor -
 # the dashboard it's attached to already shows low-volume rows

@@ -55,22 +55,17 @@ response text, so if this happens again there's an actual answer
 instead of a guess.
 """
 import json
-import logging
 
 import anthropic
 
 from config import ANTHROPIC_API_KEY, CLAUDE_TIMEOUT_SECONDS, LOG_CLAUDE_PROMPTS
 from compact import to_compact_table
+from logging_setup import get_agent_logger
 
 MODEL = "claude-sonnet-5"
 STRUCTURED_OUTPUT_BETA = "structured-outputs-2025-11-13"
 
-logger = logging.getLogger(__name__)
-if not logger.handlers:
-    _handler = logging.FileHandler("agent.log")
-    _handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)s %(message)s"))
-    logger.addHandler(_handler)
-    logger.setLevel(logging.INFO)
+logger = get_agent_logger(__name__)
 
 
 def _build_system_prompt(compare_to_previous):

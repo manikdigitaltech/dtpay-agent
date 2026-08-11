@@ -157,3 +157,25 @@ def count_user_messages(session_id):
                 {"session_id": session_id},
             )
             return cur.fetchone()["n"]
+
+
+def delete_expired_sessions():
+    """
+    Deletes agent_chat_sessions rows past their expiry - nothing else
+    does this; /chat's expiry check rejects requests against an
+    expired session, but the row itself just sits there afterward,
+    growing agent_chat_sessions unbounded (each row holds a full
+    context_data blob, some of it real business data) in a long-running
+    deployment. Does NOT touch agent_chat_logs - that's a permanent
+    audit/token-usage record, not session state, and stays regardless
+    of whether the session it came from has expired. Meant to be run
+    periodically (see cleanup_sessions.py) - a daily cron/scheduled
+    task is enough, since nothing breaks by an expired session lingering
+    a few extra hours, only by it lingering forever.
+    """
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM agent_chat_sessions WHERE expires_at < NOW()")
+            deleted = cur.rowcount
+        conn.commit()
+    return deleted

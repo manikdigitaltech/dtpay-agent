@@ -350,4 +350,4 @@ def fetch_all(day_start, day_end, cp_product_ids, min_resolved=None, include_dai
         daily_operator_breakdown = classify_operator_counts(daily_operator_rows, by_day=True)
 
     return (product_metrics, reason_breakdown, operator_breakdown, daily_metrics,
-        hourly_metrics, daily_reason_breakdown, daily_operator_breakdown)
+            hourly_metrics, daily_reason_breakdown, daily_operator_breakdown)

@@ -26,6 +26,13 @@ CLAUDE_TIMEOUT_SECONDS = int(os.environ.get("CLAUDE_TIMEOUT_SECONDS", "60"))
 # normal operation, only while actively debugging.
 LOG_CLAUDE_PROMPTS = os.environ.get("LOG_CLAUDE_PROMPTS", "false").lower() == "true"
 
+# Comma-separated list of origins allowed to call the API from a
+# browser (your dashboard's actual domain, e.g.
+# "https://dashboard.dtpay.example"). Empty by default - deny by
+# default rather than defaulting to "*", since an unset value here
+# should mean "nothing is allowed yet", not "everything is".
+ALLOWED_ORIGINS = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+
 DB_CONFIG = {
     "host": os.environ.get("DTPAY_DB_HOST", "localhost"),
     "port": int(os.environ.get("DTPAY_DB_PORT", "3306")),
