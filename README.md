@@ -412,6 +412,24 @@ appear in the email at all (current week's digest only contains
 services present in the current window) — silently dropped rather
 than flagged. Hasn't come up yet; worth adding if it does.
 
+## Fixed: duplicate reason_code entries
+
+Found in real production data (VUZ360/Uganda, a different partner
+than anything tested during development) — `INSUFFICIENT_BALANCE`
+appeared twice in one product's `reasons` list, at 219 and 8
+occurrences, instead of once at 227. Cause: `REASON_COUNTS_SQL`
+groups by `(product_id, transaction_status, reason_code)`, and the
+same `reason_code` string can come from two different
+`transaction_status` values - here, one `FAILED` row where
+`cb_error_message` was `INSUFFICIENT_BALANCE#...` (parsed via the
+`#` split) and a separate row under a different status where
+`partner_error_message` was the literal string `INSUFFICIENT_BALANCE`
+directly. `providers.merge_duplicate_reasons()` now combines these
+after `filter_reason_rows()` runs, for both the aggregate and
+per-day breakdowns. Confirmed `operators` never had this problem -
+operator classification already aggregates across every status in
+Python, reasons just never had the equivalent step until now.
+
 ## What's verified vs. still open
 
 Verified: the SQL logic against real sample exports (several rounds

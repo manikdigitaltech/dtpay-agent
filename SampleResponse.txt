@@ -1,0 +1,499 @@
+{
+    "session_id": "90ef77c2-68f6-4c7a-a5a5-94ccd4757765",
+    "date_range": {
+        "start": "2026-07-24",
+        "end": "2026-07-25"
+    },
+    "overall": {
+        "total_resolved": 9817,
+        "completed": 339,
+        "conversion_rate_pct": 3.45
+    },
+    "products": [
+        {
+            "product_id": 5277,
+            "product_name": "KidsFlix",
+            "country": "Democratic Republic of the Congo",
+            "provider": "pawapay",
+            "cp_id": 122,
+            "partner_name": "Digital Technology",
+            "total_resolved": 9817,
+            "completed": 339,
+            "conversion_rate_pct": 3.45,
+            "summary": "KidsFlix's mobile money transactions in the Democratic Republic of the Congo remained weak across both days, with conversion staying low throughout rather than being dragged down by any single incident. The dominant driver of failure is payment approvals simply not going through, followed by a large volume of unclassified errors and insufficient balance on the customer's end, all of which point to market and network conditions rather than anything on the partner's side. Across the three telecoms, Airtel carries the bulk of the attempts but converts at roughly the same modest rate as Orange and Vodacom M-Pesa, so no single network is uniquely broken - the problem is broad-based. Intraday, the early morning hours consistently see both lower volume and weaker conversion, while activity and success pick up somewhat in the evening hours on both days.",
+            "recommendations": [
+                "Investigate the high share of PAYMENT_NOT_APPROVED and OTHER_ERROR responses with pawapay, since together they account for the majority of failures and are not tied to a specific operator.",
+                "Consider messaging users about retrying during evening hours, when approval rates trend noticeably better than in the early morning window.",
+                "Since insufficient balance and subscription-limit/rate-limit errors make up a meaningful share of failures, consider spacing out retry attempts to reduce collisions with 'too many requests' rejections."
+            ],
+            "notable_days": [],
+            "notable_hours": [],
+            "reasons": [
+                {
+                    "reason": "OTHER_ERROR",
+                    "occurrences": 1969
+                },
+                {
+                    "reason": "PAYMENT_NOT_APPROVED",
+                    "occurrences": 4370
+                },
+                {
+                    "reason": "INSUFFICIENT_BALANCE",
+                    "occurrences": 1435
+                },
+                {
+                    "reason": "Too many requests. Please try later.",
+                    "occurrences": 697
+                },
+                {
+                    "reason": "PAYER_LIMIT_REACHED",
+                    "occurrences": 4
+                },
+                {
+                    "reason": "Subscription limit exceeded.",
+                    "occurrences": 777
+                },
+                {
+                    "reason": "INVALID_PAYER_FORMAT",
+                    "occurrences": 25
+                },
+                {
+                    "reason": "PAYER_NOT_FOUND",
+                    "occurrences": 70
+                },
+                {
+                    "reason": "CORRESPONDENT_TEMPORARILY_UNAVAILABLE",
+                    "occurrences": 131
+                }
+            ],
+            "operators": [
+                {
+                    "operator": "ORANGE_COD",
+                    "attempts": 1658,
+                    "ok": 44
+                },
+                {
+                    "operator": "VODACOM_MPESA_COD",
+                    "attempts": 2259,
+                    "ok": 96
+                },
+                {
+                    "operator": "AIRTEL_COD",
+                    "attempts": 4427,
+                    "ok": 199
+                }
+            ],
+            "daily": [
+                {
+                    "date": "2026-07-24",
+                    "total_resolved": 5105,
+                    "completed": 160,
+                    "conversion_rate_pct": 3.13,
+                    "reasons": [
+                        {
+                            "reason": "OTHER_ERROR",
+                            "occurrences": 1032
+                        },
+                        {
+                            "reason": "PAYMENT_NOT_APPROVED",
+                            "occurrences": 2401
+                        },
+                        {
+                            "reason": "INSUFFICIENT_BALANCE",
+                            "occurrences": 763
+                        },
+                        {
+                            "reason": "Too many requests. Please try later.",
+                            "occurrences": 354
+                        },
+                        {
+                            "reason": "PAYER_LIMIT_REACHED",
+                            "occurrences": 1
+                        },
+                        {
+                            "reason": "Subscription limit exceeded.",
+                            "occurrences": 346
+                        },
+                        {
+                            "reason": "INVALID_PAYER_FORMAT",
+                            "occurrences": 15
+                        },
+                        {
+                            "reason": "PAYER_NOT_FOUND",
+                            "occurrences": 33
+                        }
+                    ],
+                    "operators": [
+                        {
+                            "operator": "ORANGE_COD",
+                            "attempts": 840,
+                            "ok": 20
+                        },
+                        {
+                            "operator": "VODACOM_MPESA_COD",
+                            "attempts": 1184,
+                            "ok": 44
+                        },
+                        {
+                            "operator": "AIRTEL_COD",
+                            "attempts": 2381,
+                            "ok": 95
+                        }
+                    ]
+                },
+                {
+                    "date": "2026-07-25",
+                    "total_resolved": 4712,
+                    "completed": 179,
+                    "conversion_rate_pct": 3.8,
+                    "reasons": [
+                        {
+                            "reason": "OTHER_ERROR",
+                            "occurrences": 937
+                        },
+                        {
+                            "reason": "INSUFFICIENT_BALANCE",
+                            "occurrences": 672
+                        },
+                        {
+                            "reason": "Too many requests. Please try later.",
+                            "occurrences": 343
+                        },
+                        {
+                            "reason": "Subscription limit exceeded.",
+                            "occurrences": 431
+                        },
+                        {
+                            "reason": "PAYMENT_NOT_APPROVED",
+                            "occurrences": 1969
+                        },
+                        {
+                            "reason": "PAYER_NOT_FOUND",
+                            "occurrences": 37
+                        },
+                        {
+                            "reason": "CORRESPONDENT_TEMPORARILY_UNAVAILABLE",
+                            "occurrences": 131
+                        },
+                        {
+                            "reason": "INVALID_PAYER_FORMAT",
+                            "occurrences": 10
+                        },
+                        {
+                            "reason": "PAYER_LIMIT_REACHED",
+                            "occurrences": 3
+                        }
+                    ],
+                    "operators": [
+                        {
+                            "operator": "ORANGE_COD",
+                            "attempts": 818,
+                            "ok": 24
+                        },
+                        {
+                            "operator": "AIRTEL_COD",
+                            "attempts": 2046,
+                            "ok": 104
+                        },
+                        {
+                            "operator": "VODACOM_MPESA_COD",
+                            "attempts": 1075,
+                            "ok": 52
+                        }
+                    ]
+                }
+            ],
+            "hourly": [
+                {
+                    "hour": "2026-07-24T00:00:00",
+                    "total_resolved": 381,
+                    "completed": 12,
+                    "conversion_rate_pct": 3.15
+                },
+                {
+                    "hour": "2026-07-24T01:00:00",
+                    "total_resolved": 328,
+                    "completed": 5,
+                    "conversion_rate_pct": 1.52
+                },
+                {
+                    "hour": "2026-07-24T02:00:00",
+                    "total_resolved": 169,
+                    "completed": 3,
+                    "conversion_rate_pct": 1.78
+                },
+                {
+                    "hour": "2026-07-24T03:00:00",
+                    "total_resolved": 103,
+                    "completed": 6,
+                    "conversion_rate_pct": 5.83
+                },
+                {
+                    "hour": "2026-07-24T04:00:00",
+                    "total_resolved": 75,
+                    "completed": 2,
+                    "conversion_rate_pct": 2.67
+                },
+                {
+                    "hour": "2026-07-24T05:00:00",
+                    "total_resolved": 39,
+                    "completed": 1,
+                    "conversion_rate_pct": 2.56
+                },
+                {
+                    "hour": "2026-07-24T06:00:00",
+                    "total_resolved": 49,
+                    "completed": 1,
+                    "conversion_rate_pct": 2.04
+                },
+                {
+                    "hour": "2026-07-24T07:00:00",
+                    "total_resolved": 79,
+                    "completed": 2,
+                    "conversion_rate_pct": 2.53
+                },
+                {
+                    "hour": "2026-07-24T08:00:00",
+                    "total_resolved": 115,
+                    "completed": 4,
+                    "conversion_rate_pct": 3.48
+                },
+                {
+                    "hour": "2026-07-24T09:00:00",
+                    "total_resolved": 156,
+                    "completed": 7,
+                    "conversion_rate_pct": 4.49
+                },
+                {
+                    "hour": "2026-07-24T10:00:00",
+                    "total_resolved": 189,
+                    "completed": 4,
+                    "conversion_rate_pct": 2.12
+                },
+                {
+                    "hour": "2026-07-24T11:00:00",
+                    "total_resolved": 218,
+                    "completed": 8,
+                    "conversion_rate_pct": 3.67
+                },
+                {
+                    "hour": "2026-07-24T12:00:00",
+                    "total_resolved": 273,
+                    "completed": 5,
+                    "conversion_rate_pct": 1.83
+                },
+                {
+                    "hour": "2026-07-24T13:00:00",
+                    "total_resolved": 243,
+                    "completed": 6,
+                    "conversion_rate_pct": 2.47
+                },
+                {
+                    "hour": "2026-07-24T14:00:00",
+                    "total_resolved": 269,
+                    "completed": 9,
+                    "conversion_rate_pct": 3.35
+                },
+                {
+                    "hour": "2026-07-24T15:00:00",
+                    "total_resolved": 267,
+                    "completed": 9,
+                    "conversion_rate_pct": 3.37
+                },
+                {
+                    "hour": "2026-07-24T16:00:00",
+                    "total_resolved": 207,
+                    "completed": 6,
+                    "conversion_rate_pct": 2.9
+                },
+                {
+                    "hour": "2026-07-24T17:00:00",
+                    "total_resolved": 264,
+                    "completed": 8,
+                    "conversion_rate_pct": 3.03
+                },
+                {
+                    "hour": "2026-07-24T18:00:00",
+                    "total_resolved": 275,
+                    "completed": 8,
+                    "conversion_rate_pct": 2.91
+                },
+                {
+                    "hour": "2026-07-24T19:00:00",
+                    "total_resolved": 207,
+                    "completed": 10,
+                    "conversion_rate_pct": 4.83
+                },
+                {
+                    "hour": "2026-07-24T20:00:00",
+                    "total_resolved": 306,
+                    "completed": 17,
+                    "conversion_rate_pct": 5.56
+                },
+                {
+                    "hour": "2026-07-24T21:00:00",
+                    "total_resolved": 336,
+                    "completed": 15,
+                    "conversion_rate_pct": 4.46
+                },
+                {
+                    "hour": "2026-07-24T22:00:00",
+                    "total_resolved": 293,
+                    "completed": 8,
+                    "conversion_rate_pct": 2.73
+                },
+                {
+                    "hour": "2026-07-24T23:00:00",
+                    "total_resolved": 264,
+                    "completed": 4,
+                    "conversion_rate_pct": 1.52
+                },
+                {
+                    "hour": "2026-07-25T00:00:00",
+                    "total_resolved": 306,
+                    "completed": 11,
+                    "conversion_rate_pct": 3.59
+                },
+                {
+                    "hour": "2026-07-25T01:00:00",
+                    "total_resolved": 268,
+                    "completed": 9,
+                    "conversion_rate_pct": 3.36
+                },
+                {
+                    "hour": "2026-07-25T02:00:00",
+                    "total_resolved": 139,
+                    "completed": 7,
+                    "conversion_rate_pct": 5.04
+                },
+                {
+                    "hour": "2026-07-25T03:00:00",
+                    "total_resolved": 127,
+                    "completed": 3,
+                    "conversion_rate_pct": 2.36
+                },
+                {
+                    "hour": "2026-07-25T04:00:00",
+                    "total_resolved": 67,
+                    "completed": 1,
+                    "conversion_rate_pct": 1.49
+                },
+                {
+                    "hour": "2026-07-25T05:00:00",
+                    "total_resolved": 64,
+                    "completed": 1,
+                    "conversion_rate_pct": 1.56
+                },
+                {
+                    "hour": "2026-07-25T06:00:00",
+                    "total_resolved": 44,
+                    "completed": 1,
+                    "conversion_rate_pct": 2.27
+                },
+                {
+                    "hour": "2026-07-25T07:00:00",
+                    "total_resolved": 59,
+                    "completed": 3,
+                    "conversion_rate_pct": 5.08
+                },
+                {
+                    "hour": "2026-07-25T08:00:00",
+                    "total_resolved": 96,
+                    "completed": 6,
+                    "conversion_rate_pct": 6.25
+                },
+                {
+                    "hour": "2026-07-25T09:00:00",
+                    "total_resolved": 163,
+                    "completed": 7,
+                    "conversion_rate_pct": 4.29
+                },
+                {
+                    "hour": "2026-07-25T10:00:00",
+                    "total_resolved": 190,
+                    "completed": 9,
+                    "conversion_rate_pct": 4.74
+                },
+                {
+                    "hour": "2026-07-25T11:00:00",
+                    "total_resolved": 183,
+                    "completed": 8,
+                    "conversion_rate_pct": 4.37
+                },
+                {
+                    "hour": "2026-07-25T12:00:00",
+                    "total_resolved": 188,
+                    "completed": 7,
+                    "conversion_rate_pct": 3.72
+                },
+                {
+                    "hour": "2026-07-25T13:00:00",
+                    "total_resolved": 220,
+                    "completed": 10,
+                    "conversion_rate_pct": 4.55
+                },
+                {
+                    "hour": "2026-07-25T14:00:00",
+                    "total_resolved": 181,
+                    "completed": 8,
+                    "conversion_rate_pct": 4.42
+                },
+                {
+                    "hour": "2026-07-25T15:00:00",
+                    "total_resolved": 187,
+                    "completed": 4,
+                    "conversion_rate_pct": 2.14
+                },
+                {
+                    "hour": "2026-07-25T16:00:00",
+                    "total_resolved": 246,
+                    "completed": 15,
+                    "conversion_rate_pct": 6.1
+                },
+                {
+                    "hour": "2026-07-25T17:00:00",
+                    "total_resolved": 223,
+                    "completed": 11,
+                    "conversion_rate_pct": 4.93
+                },
+                {
+                    "hour": "2026-07-25T18:00:00",
+                    "total_resolved": 221,
+                    "completed": 12,
+                    "conversion_rate_pct": 5.43
+                },
+                {
+                    "hour": "2026-07-25T19:00:00",
+                    "total_resolved": 238,
+                    "completed": 9,
+                    "conversion_rate_pct": 3.78
+                },
+                {
+                    "hour": "2026-07-25T20:00:00",
+                    "total_resolved": 241,
+                    "completed": 7,
+                    "conversion_rate_pct": 2.9
+                },
+                {
+                    "hour": "2026-07-25T21:00:00",
+                    "total_resolved": 271,
+                    "completed": 7,
+                    "conversion_rate_pct": 2.58
+                },
+                {
+                    "hour": "2026-07-25T22:00:00",
+                    "total_resolved": 373,
+                    "completed": 10,
+                    "conversion_rate_pct": 2.68
+                },
+                {
+                    "hour": "2026-07-25T23:00:00",
+                    "total_resolved": 417,
+                    "completed": 13,
+                    "conversion_rate_pct": 3.12
+                }
+            ]
+        }
+    ],
+    "generated_at": "2026-08-11T05:44:57.276847+00:00"
+}
