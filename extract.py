@@ -132,6 +132,7 @@ OPERATOR_COUNTS_SQL = """
     SELECT product_id, operator, channel, status, COUNT(*) AS count
     FROM payout_logs
     WHERE cp_product_id IN %(cp_product_ids)s AND date_time >= %(day_start)s AND date_time < %(day_end)s
+      AND request_type IN ('newpurchase', 'repurchase')
     GROUP BY product_id, operator, channel, status
 """
 
@@ -139,12 +140,26 @@ DAILY_OPERATOR_COUNTS_SQL = """
     SELECT product_id, DATE(date_time) AS day, operator, channel, status, COUNT(*) AS count
     FROM payout_logs
     WHERE cp_product_id IN %(cp_product_ids)s AND date_time >= %(day_start)s AND date_time < %(day_end)s
+      AND request_type IN ('newpurchase', 'repurchase')
     GROUP BY product_id, DATE(date_time), operator, channel, status
 """
 
 # ============================================================
 # NEW path - payout_logs-based (pawapay uses this)
 # ============================================================
+#
+# Every query below filters to request_type IN ('newpurchase', 'repurchase') -
+# both confirmed as real, legitimate values representing an actual user
+# clicking to subscribe (a first-time purchase or someone re-subscribing
+# after lapsing) - not something to exclude the way the original
+# newpurchase-only filter would have. This still guards against other
+# request types payout_logs may log that AREN'T a user-initiated checkout
+# (an automatic recurring-billing attempt being the likely candidate,
+# though not yet confirmed against real data the way these two were) -
+# those shouldn't count toward the new-subscriber conversion funnel this
+# whole system measures. Didn't change the VUZ360 numbers already verified
+# (that specific sample was 100% newpurchase), but a longer window or a
+# different product could easily include both request types, or others.
 
 PAYOUT_STATUS_COUNTS_SQL = """
     SELECT
@@ -157,6 +172,7 @@ PAYOUT_STATUS_COUNTS_SQL = """
     JOIN dtpay_users u         ON u.id   = cpp.cp_id
     WHERE pl.cp_product_id IN %(cp_product_ids)s
       AND pl.date_time >= %(day_start)s AND pl.date_time < %(day_end)s
+      AND pl.request_type IN ('newpurchase', 'repurchase')
     GROUP BY pl.product_id, pl.product_name, pl.country, pl.agg_name, pl.status,
              cpp.id, u.id, u.email, u.company_name
 """
@@ -165,6 +181,7 @@ PAYOUT_DAILY_STATUS_COUNTS_SQL = """
     SELECT product_id, DATE(date_time) AS day, agg_name AS provider, status, COUNT(*) AS count
     FROM payout_logs
     WHERE cp_product_id IN %(cp_product_ids)s AND date_time >= %(day_start)s AND date_time < %(day_end)s
+      AND request_type IN ('newpurchase', 'repurchase')
     GROUP BY product_id, DATE(date_time), agg_name, status
 """
 
@@ -173,6 +190,7 @@ PAYOUT_HOURLY_STATUS_COUNTS_SQL = """
            agg_name AS provider, status, COUNT(*) AS count
     FROM payout_logs
     WHERE cp_product_id IN %(cp_product_ids)s AND date_time >= %(day_start)s AND date_time < %(day_end)s
+      AND request_type IN ('newpurchase', 'repurchase')
     GROUP BY product_id, hour, agg_name, status
 """
 
@@ -182,6 +200,7 @@ PAYOUT_REASON_COUNTS_SQL = """
     SELECT product_id, agg_name AS provider, status, error_message AS reason_code, COUNT(*) AS count
     FROM payout_logs
     WHERE cp_product_id IN %(cp_product_ids)s AND date_time >= %(day_start)s AND date_time < %(day_end)s
+      AND request_type IN ('newpurchase', 'repurchase')
     GROUP BY product_id, agg_name, status, error_message
 """
 
@@ -190,6 +209,7 @@ PAYOUT_DAILY_REASON_COUNTS_SQL = """
            error_message AS reason_code, COUNT(*) AS count
     FROM payout_logs
     WHERE cp_product_id IN %(cp_product_ids)s AND date_time >= %(day_start)s AND date_time < %(day_end)s
+      AND request_type IN ('newpurchase', 'repurchase')
     GROUP BY product_id, DATE(date_time), agg_name, status, error_message
 """
 
