@@ -772,3 +772,281 @@ Data for this summary:
 ]
 2026-08-03 12:28:38,251 INFO Chat response:
 Looking at conversion rates rather than raw volume, Airtel had the highest share of attempts (4,427) with 199 successes, but if you compare rates directly: Airtel converted at about 4.5% (199/4,427), Vodacom M-Pesa at about 4.25% (96/2,259), and Orange at about 2.65% (44/1,658) - so Airtel comes out slightly ahead of Vodacom, with Orange clearly trailing both, though the summary itself notes all three operators performed at a similarly low rate overall.
+2026-08-12 10:39:57,481 INFO Claude request for cp_id=134:
+--- system ---
+You are a performance analyst for DTPay, a payment integration platform, writing an analysis that will be shown directly to content-service partners (e.g. KidsFlix, Learn2bFit) about how their service performed.
+
+DTPay routes different products through different payment providers (e.g. pawapay for African mobile money, razorpay for Indian UPI/card/bank payments), given to you as `provider`. What "operator" means in the data depends on it: for a mobile-money provider it's the actual telecom network (MTN, Airtel, ...); for a card/UPI provider it's the payment channel or method instead (upi, card, ...), not a network. Use whichever framing actually fits the given provider rather than assuming it's always a mobile network.
+
+For each service you're given, write:
+- summary: two to four sentences on what's actually happening, grounded in the failure/rejection reasons and operator data - not generic commentary. Refer to the service by its product_name and the country by its full name (both given to you) rather than an ID or abbreviation. Since there's no previous period to compare against here, the daily breakdown (and the hourly one, when given) should be a real part of the summary, not just a source for a rare standout - describe the actual shape of the period (fairly steady throughout, weaker at certain times of day, one day or hour pulling the average down or up) in addition to the reason/operator picture, even when nothing rises to the bar for notable_days/notable_hours specifically.
+- recommendations: 1-3 specific, actionable items tied to the actual data (a specific failure reason, a specific underperforming network or channel), not generic advice like "improve your conversion rate."
+- notable_days: you're also given `daily`, a day-by-day breakdown given as a compact table: the first line names the columns (date, total_resolved, completed, conversion_rate_pct), and each line after that is one day's values in that same order, comma-separated - the same numbers a list of objects would give you, just not repeating the column names on every line. Only include a date here if your summary text explicitly names and discusses that day by weekday - never flag a day here that the summary doesn't actually talk about, since the report highlights these days visually and the reader will expect the text right below to explain why. Use this sparingly: only for a day that's a genuinely clear standout (a real dip or spike), not just modestly above or below the period's average. A day with much lower volume than the others can look artificially swingy in its rate; weigh that before calling it notable at all.
+- notable_hours: you're also given `hourly`, an hour-by-hour breakdown covering the same period as `daily`, in the same compact table format (columns: hour, total_resolved, completed, conversion_rate_pct), when the requested range is short enough for it to be included at all - "(none)" if it wasn't. If a specific hour (or a recurring time of day across multiple days) clearly stands out - a burst of volume, a spike or crash in conversion - name it in your summary and list its exact timestamp (the "hour" column's value) here, same bar as notable_days: a genuinely clear standout, only ever an hour you actually discuss, and weigh low volume before calling one out. If `hourly` is "(none)", leave this empty too.
+
+Rules:
+- Never restate specific conversion percentages, counts, or figures in your text - those are shown to the partner separately, right next to your summary. This applies to daily and hourly figures too, not just the headline ones. Referring to categories ("insufficient balance", "one of the networks") or directional language ("improved", "worsened", "roughly doubled") is fine; restating "3.28%" or "1,401 of 42,684" is not.
+- Do not frame operator- or customer-side issues (insufficient balance, OTP timeout, an operator's own eligibility rules, "no active deposit flow") as the partner's fault - describe those as market/network conditions outside the partner's control, not something for them to fix on their end.
+- If total_resolved is under about 30, say plainly that the volume is too low to draw a real conclusion from, rather than treating a single-digit sample as a meaningful rate.
+
+--- user message ---
+{
+  "services": [
+    {
+      "product_id": 5321,
+      "product_name": "VUZ360",
+      "country": "Uganda",
+      "provider": "pawapay",
+      "total_resolved": 616,
+      "completed": 30,
+      "failed": 586,
+      "conversion_rate_pct": 4.87,
+      "top_reasons": [
+        {
+          "reason": "The customer does not have enough funds to complete the payment or has reached a payment limit.",
+          "occurrences": 317
+        },
+        {
+          "reason": "The payment failed due to an unknown reason.",
+          "occurrences": 145
+        },
+        {
+          "reason": "The customer does not have enough funds to complete the payment.",
+          "occurrences": 57
+        },
+        {
+          "reason": "The customer did not authorize the payment in time or the transaction timed out at the Mobile Network Operator",
+          "occurrences": 52
+        },
+        {
+          "reason": "The phone number does not have a mobile money wallet or does not belong to the telco.",
+          "occurrences": 13
+        }
+      ],
+      "operators": [
+        {
+          "operator": "MTN_MOMO_UGA",
+          "attempts": 397,
+          "ok": 13
+        },
+        {
+          "operator": "AIRTEL_OAPI_UGA",
+          "attempts": 219,
+          "ok": 17
+        }
+      ],
+      "daily": "date,total_resolved,completed,conversion_rate_pct\n2026-07-24,327,16,4.89\n2026-07-25,289,14,4.84",
+      "hourly": "hour,total_resolved,completed,conversion_rate_pct\n2026-07-24T00:00:00,0,0,0.0\n2026-07-24T01:00:00,40,0,0.0\n2026-07-24T02:00:00,21,1,4.76\n2026-07-24T03:00:00,8,0,0.0\n2026-07-24T04:00:00,1,0,0.0\n2026-07-24T05:00:00,3,1,33.33\n2026-07-24T06:00:00,0,0,0.0\n2026-07-24T07:00:00,7,0,0.0\n2026-07-24T08:00:00,6,0,0.0\n2026-07-24T09:00:00,16,1,6.25\n2026-07-24T10:00:00,15,0,0.0\n2026-07-24T11:00:00,5,1,20.0\n2026-07-24T12:00:00,17,1,5.88\n2026-07-24T13:00:00,13,2,15.38\n2026-07-24T14:00:00,57,5,8.77\n2026-07-24T15:00:00,95,2,2.11\n2026-07-24T16:00:00,22,2,9.09\n2026-07-24T17:00:00,1,0,0.0\n2026-07-24T18:00:00,0,0,0.0\n2026-07-24T19:00:00,0,0,0.0\n2026-07-24T20:00:00,0,0,0.0\n2026-07-24T21:00:00,0,0,0.0\n2026-07-24T22:00:00,0,0,0.0\n2026-07-24T23:00:00,0,0,0.0\n2026-07-25T00:00:00,3,0,0.0\n2026-07-25T01:00:00,26,1,3.85\n2026-07-25T02:00:00,6,0,0.0\n2026-07-25T03:00:00,2,0,0.0\n2026-07-25T04:00:00,2,0,0.0\n2026-07-25T05:00:00,2,1,50.0\n2026-07-25T06:00:00,5,0,0.0\n2026-07-25T07:00:00,5,0,0.0\n2026-07-25T08:00:00,6,2,33.33\n2026-07-25T09:00:00,16,1,6.25\n2026-07-25T10:00:00,14,0,0.0\n2026-07-25T11:00:00,20,1,5.0\n2026-07-25T12:00:00,15,1,6.67\n2026-07-25T13:00:00,18,1,5.56\n2026-07-25T14:00:00,3,0,0.0\n2026-07-25T15:00:00,7,2,28.57\n2026-07-25T16:00:00,15,0,0.0\n2026-07-25T17:00:00,13,0,0.0\n2026-07-25T18:00:00,97,3,3.09\n2026-07-25T19:00:00,13,1,7.69\n2026-07-25T20:00:00,0,0,0.0\n2026-07-25T21:00:00,0,0,0.0\n2026-07-25T22:00:00,1,0,0.0\n2026-07-25T23:00:00,0,0,0.0"
+    }
+  ]
+}
+2026-08-12 10:39:58,160 ERROR Claude API call failed for cp_id=134: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'API key is invalid.'}, 'request_id': None}
+2026-08-12 10:42:05,491 INFO Claude request for cp_id=134:
+--- system ---
+You are a performance analyst for DTPay, a payment integration platform, writing an analysis that will be shown directly to content-service partners (e.g. KidsFlix, Learn2bFit) about how their service performed.
+
+DTPay routes different products through different payment providers (e.g. pawapay for African mobile money, razorpay for Indian UPI/card/bank payments), given to you as `provider`. What "operator" means in the data depends on it: for a mobile-money provider it's the actual telecom network (MTN, Airtel, ...); for a card/UPI provider it's the payment channel or method instead (upi, card, ...), not a network. Use whichever framing actually fits the given provider rather than assuming it's always a mobile network.
+
+For each service you're given, write:
+- summary: two to four sentences on what's actually happening, grounded in the failure/rejection reasons and operator data - not generic commentary. Refer to the service by its product_name and the country by its full name (both given to you) rather than an ID or abbreviation. Since there's no previous period to compare against here, the daily breakdown (and the hourly one, when given) should be a real part of the summary, not just a source for a rare standout - describe the actual shape of the period (fairly steady throughout, weaker at certain times of day, one day or hour pulling the average down or up) in addition to the reason/operator picture, even when nothing rises to the bar for notable_days/notable_hours specifically.
+- recommendations: 1-3 specific, actionable items tied to the actual data (a specific failure reason, a specific underperforming network or channel), not generic advice like "improve your conversion rate."
+- notable_days: you're also given `daily`, a day-by-day breakdown given as a compact table: the first line names the columns (date, total_resolved, completed, conversion_rate_pct), and each line after that is one day's values in that same order, comma-separated - the same numbers a list of objects would give you, just not repeating the column names on every line. Only include a date here if your summary text explicitly names and discusses that day by weekday - never flag a day here that the summary doesn't actually talk about, since the report highlights these days visually and the reader will expect the text right below to explain why. Use this sparingly: only for a day that's a genuinely clear standout (a real dip or spike), not just modestly above or below the period's average. A day with much lower volume than the others can look artificially swingy in its rate; weigh that before calling it notable at all.
+- notable_hours: you're also given `hourly`, an hour-by-hour breakdown covering the same period as `daily`, in the same compact table format (columns: hour, total_resolved, completed, conversion_rate_pct), when the requested range is short enough for it to be included at all - "(none)" if it wasn't. If a specific hour (or a recurring time of day across multiple days) clearly stands out - a burst of volume, a spike or crash in conversion - name it in your summary and list its exact timestamp (the "hour" column's value) here, same bar as notable_days: a genuinely clear standout, only ever an hour you actually discuss, and weigh low volume before calling one out. If `hourly` is "(none)", leave this empty too.
+
+Rules:
+- Never restate specific conversion percentages, counts, or figures in your text - those are shown to the partner separately, right next to your summary. This applies to daily and hourly figures too, not just the headline ones. Referring to categories ("insufficient balance", "one of the networks") or directional language ("improved", "worsened", "roughly doubled") is fine; restating "3.28%" or "1,401 of 42,684" is not.
+- Do not frame operator- or customer-side issues (insufficient balance, OTP timeout, an operator's own eligibility rules, "no active deposit flow") as the partner's fault - describe those as market/network conditions outside the partner's control, not something for them to fix on their end.
+- If total_resolved is under about 30, say plainly that the volume is too low to draw a real conclusion from, rather than treating a single-digit sample as a meaningful rate.
+
+--- user message ---
+{
+  "services": [
+    {
+      "product_id": 5321,
+      "product_name": "VUZ360",
+      "country": "Uganda",
+      "provider": "pawapay",
+      "total_resolved": 616,
+      "completed": 30,
+      "failed": 586,
+      "conversion_rate_pct": 4.87,
+      "top_reasons": [
+        {
+          "reason": "The customer does not have enough funds to complete the payment or has reached a payment limit.",
+          "occurrences": 317
+        },
+        {
+          "reason": "The payment failed due to an unknown reason.",
+          "occurrences": 145
+        },
+        {
+          "reason": "The customer does not have enough funds to complete the payment.",
+          "occurrences": 57
+        },
+        {
+          "reason": "The customer did not authorize the payment in time or the transaction timed out at the Mobile Network Operator",
+          "occurrences": 52
+        },
+        {
+          "reason": "The phone number does not have a mobile money wallet or does not belong to the telco.",
+          "occurrences": 13
+        }
+      ],
+      "operators": [
+        {
+          "operator": "MTN_MOMO_UGA",
+          "attempts": 397,
+          "ok": 13
+        },
+        {
+          "operator": "AIRTEL_OAPI_UGA",
+          "attempts": 219,
+          "ok": 17
+        }
+      ],
+      "daily": "date,total_resolved,completed,conversion_rate_pct\n2026-07-24,327,16,4.89\n2026-07-25,289,14,4.84",
+      "hourly": "hour,total_resolved,completed,conversion_rate_pct\n2026-07-24T00:00:00,0,0,0.0\n2026-07-24T01:00:00,40,0,0.0\n2026-07-24T02:00:00,21,1,4.76\n2026-07-24T03:00:00,8,0,0.0\n2026-07-24T04:00:00,1,0,0.0\n2026-07-24T05:00:00,3,1,33.33\n2026-07-24T06:00:00,0,0,0.0\n2026-07-24T07:00:00,7,0,0.0\n2026-07-24T08:00:00,6,0,0.0\n2026-07-24T09:00:00,16,1,6.25\n2026-07-24T10:00:00,15,0,0.0\n2026-07-24T11:00:00,5,1,20.0\n2026-07-24T12:00:00,17,1,5.88\n2026-07-24T13:00:00,13,2,15.38\n2026-07-24T14:00:00,57,5,8.77\n2026-07-24T15:00:00,95,2,2.11\n2026-07-24T16:00:00,22,2,9.09\n2026-07-24T17:00:00,1,0,0.0\n2026-07-24T18:00:00,0,0,0.0\n2026-07-24T19:00:00,0,0,0.0\n2026-07-24T20:00:00,0,0,0.0\n2026-07-24T21:00:00,0,0,0.0\n2026-07-24T22:00:00,0,0,0.0\n2026-07-24T23:00:00,0,0,0.0\n2026-07-25T00:00:00,3,0,0.0\n2026-07-25T01:00:00,26,1,3.85\n2026-07-25T02:00:00,6,0,0.0\n2026-07-25T03:00:00,2,0,0.0\n2026-07-25T04:00:00,2,0,0.0\n2026-07-25T05:00:00,2,1,50.0\n2026-07-25T06:00:00,5,0,0.0\n2026-07-25T07:00:00,5,0,0.0\n2026-07-25T08:00:00,6,2,33.33\n2026-07-25T09:00:00,16,1,6.25\n2026-07-25T10:00:00,14,0,0.0\n2026-07-25T11:00:00,20,1,5.0\n2026-07-25T12:00:00,15,1,6.67\n2026-07-25T13:00:00,18,1,5.56\n2026-07-25T14:00:00,3,0,0.0\n2026-07-25T15:00:00,7,2,28.57\n2026-07-25T16:00:00,15,0,0.0\n2026-07-25T17:00:00,13,0,0.0\n2026-07-25T18:00:00,97,3,3.09\n2026-07-25T19:00:00,13,1,7.69\n2026-07-25T20:00:00,0,0,0.0\n2026-07-25T21:00:00,0,0,0.0\n2026-07-25T22:00:00,1,0,0.0\n2026-07-25T23:00:00,0,0,0.0"
+    }
+  ]
+}
+2026-08-12 10:42:05,948 ERROR Claude API call failed for cp_id=134: Error code: 401 - {'type': 'error', 'error': {'type': 'authentication_error', 'message': 'API key is invalid.'}, 'request_id': None}
+2026-08-12 10:56:38,854 INFO Claude request for cp_id=134:
+--- system ---
+You are a performance analyst for DTPay, a payment integration platform, writing an analysis that will be shown directly to content-service partners (e.g. KidsFlix, Learn2bFit) about how their service performed.
+
+DTPay routes different products through different payment providers (e.g. pawapay for African mobile money, razorpay for Indian UPI/card/bank payments), given to you as `provider`. What "operator" means in the data depends on it: for a mobile-money provider it's the actual telecom network (MTN, Airtel, ...); for a card/UPI provider it's the payment channel or method instead (upi, card, ...), not a network. Use whichever framing actually fits the given provider rather than assuming it's always a mobile network.
+
+For each service you're given, write:
+- summary: two to four sentences on what's actually happening, grounded in the failure/rejection reasons and operator data - not generic commentary. Refer to the service by its product_name and the country by its full name (both given to you) rather than an ID or abbreviation. Since there's no previous period to compare against here, the daily breakdown (and the hourly one, when given) should be a real part of the summary, not just a source for a rare standout - describe the actual shape of the period (fairly steady throughout, weaker at certain times of day, one day or hour pulling the average down or up) in addition to the reason/operator picture, even when nothing rises to the bar for notable_days/notable_hours specifically.
+- recommendations: 1-3 specific, actionable items tied to the actual data (a specific failure reason, a specific underperforming network or channel), not generic advice like "improve your conversion rate."
+- notable_days: you're also given `daily`, a day-by-day breakdown given as a compact table: the first line names the columns (date, total_resolved, completed, conversion_rate_pct), and each line after that is one day's values in that same order, comma-separated - the same numbers a list of objects would give you, just not repeating the column names on every line. Only include a date here if your summary text explicitly names and discusses that day by weekday - never flag a day here that the summary doesn't actually talk about, since the report highlights these days visually and the reader will expect the text right below to explain why. Use this sparingly: only for a day that's a genuinely clear standout (a real dip or spike), not just modestly above or below the period's average. A day with much lower volume than the others can look artificially swingy in its rate; weigh that before calling it notable at all.
+- notable_hours: you're also given `hourly`, an hour-by-hour breakdown covering the same period as `daily`, in the same compact table format (columns: hour, total_resolved, completed, conversion_rate_pct), when the requested range is short enough for it to be included at all - "(none)" if it wasn't. If a specific hour (or a recurring time of day across multiple days) clearly stands out - a burst of volume, a spike or crash in conversion - name it in your summary and list its exact timestamp (the "hour" column's value) here, same bar as notable_days: a genuinely clear standout, only ever an hour you actually discuss, and weigh low volume before calling one out. If `hourly` is "(none)", leave this empty too.
+
+Rules:
+- Never restate specific conversion percentages, counts, or figures in your text - those are shown to the partner separately, right next to your summary. This applies to daily and hourly figures too, not just the headline ones. Referring to categories ("insufficient balance", "one of the networks") or directional language ("improved", "worsened", "roughly doubled") is fine; restating "3.28%" or "1,401 of 42,684" is not.
+- Do not frame operator- or customer-side issues (insufficient balance, OTP timeout, an operator's own eligibility rules, "no active deposit flow") as the partner's fault - describe those as market/network conditions outside the partner's control, not something for them to fix on their end.
+- If total_resolved is under about 30, say plainly that the volume is too low to draw a real conclusion from, rather than treating a single-digit sample as a meaningful rate.
+
+--- user message ---
+{
+  "services": [
+    {
+      "product_id": 5321,
+      "product_name": "VUZ360",
+      "country": "Uganda",
+      "provider": "pawapay",
+      "total_resolved": 616,
+      "completed": 30,
+      "failed": 586,
+      "conversion_rate_pct": 4.87,
+      "top_reasons": [
+        {
+          "reason": "The customer does not have enough funds to complete the payment or has reached a payment limit.",
+          "occurrences": 317
+        },
+        {
+          "reason": "The payment failed due to an unknown reason.",
+          "occurrences": 145
+        },
+        {
+          "reason": "The customer does not have enough funds to complete the payment.",
+          "occurrences": 57
+        },
+        {
+          "reason": "The customer did not authorize the payment in time or the transaction timed out at the Mobile Network Operator",
+          "occurrences": 52
+        },
+        {
+          "reason": "The phone number does not have a mobile money wallet or does not belong to the telco.",
+          "occurrences": 13
+        }
+      ],
+      "operators": [
+        {
+          "operator": "MTN_MOMO_UGA",
+          "attempts": 397,
+          "ok": 13
+        },
+        {
+          "operator": "AIRTEL_OAPI_UGA",
+          "attempts": 219,
+          "ok": 17
+        }
+      ],
+      "daily": "date,total_resolved,completed,conversion_rate_pct\n2026-07-24,327,16,4.89\n2026-07-25,289,14,4.84",
+      "hourly": "hour,total_resolved,completed,conversion_rate_pct\n2026-07-24T00:00:00,0,0,0.0\n2026-07-24T01:00:00,40,0,0.0\n2026-07-24T02:00:00,21,1,4.76\n2026-07-24T03:00:00,8,0,0.0\n2026-07-24T04:00:00,1,0,0.0\n2026-07-24T05:00:00,3,1,33.33\n2026-07-24T06:00:00,0,0,0.0\n2026-07-24T07:00:00,7,0,0.0\n2026-07-24T08:00:00,6,0,0.0\n2026-07-24T09:00:00,16,1,6.25\n2026-07-24T10:00:00,15,0,0.0\n2026-07-24T11:00:00,5,1,20.0\n2026-07-24T12:00:00,17,1,5.88\n2026-07-24T13:00:00,13,2,15.38\n2026-07-24T14:00:00,57,5,8.77\n2026-07-24T15:00:00,95,2,2.11\n2026-07-24T16:00:00,22,2,9.09\n2026-07-24T17:00:00,1,0,0.0\n2026-07-24T18:00:00,0,0,0.0\n2026-07-24T19:00:00,0,0,0.0\n2026-07-24T20:00:00,0,0,0.0\n2026-07-24T21:00:00,0,0,0.0\n2026-07-24T22:00:00,0,0,0.0\n2026-07-24T23:00:00,0,0,0.0\n2026-07-25T00:00:00,3,0,0.0\n2026-07-25T01:00:00,26,1,3.85\n2026-07-25T02:00:00,6,0,0.0\n2026-07-25T03:00:00,2,0,0.0\n2026-07-25T04:00:00,2,0,0.0\n2026-07-25T05:00:00,2,1,50.0\n2026-07-25T06:00:00,5,0,0.0\n2026-07-25T07:00:00,5,0,0.0\n2026-07-25T08:00:00,6,2,33.33\n2026-07-25T09:00:00,16,1,6.25\n2026-07-25T10:00:00,14,0,0.0\n2026-07-25T11:00:00,20,1,5.0\n2026-07-25T12:00:00,15,1,6.67\n2026-07-25T13:00:00,18,1,5.56\n2026-07-25T14:00:00,3,0,0.0\n2026-07-25T15:00:00,7,2,28.57\n2026-07-25T16:00:00,15,0,0.0\n2026-07-25T17:00:00,13,0,0.0\n2026-07-25T18:00:00,97,3,3.09\n2026-07-25T19:00:00,13,1,7.69\n2026-07-25T20:00:00,0,0,0.0\n2026-07-25T21:00:00,0,0,0.0\n2026-07-25T22:00:00,1,0,0.0\n2026-07-25T23:00:00,0,0,0.0"
+    }
+  ]
+}
+2026-08-12 10:56:48,544 INFO Claude response for cp_id=134:
+{"services": [{"product_id": 5321, "summary": "VUZ360's payment performance in Uganda was weak across both days of this period, with conversion staying low and fairly consistent rather than being pulled down by one bad day. The dominant driver is customers lacking sufficient funds or hitting payment limits, which together account for well over half of all failures, compounded by a large share of unknown-reason failures and a meaningful chunk of authorization timeouts at the mobile network operator. Both MTN and Airtel show similarly poor completion rates on high attempt volumes, so this looks like a broad market-condition issue rather than one operator dragging down the other. Volume was concentrated in a few peak hours each day (notably a large afternoon burst on the 24th and an evening burst on the 25th), and those high-volume windows converted especially poorly, while many low-volume overnight and early-morning hours saw no completions at all but too little traffic to read much into that on their own.", "recommendations": ["Investigate the large 'unknown reason' failure bucket with pawapay, since it represents a big enough share of failures to be worth root-causing separately from insufficient-funds cases.", "Consider prompting or timing retries around the high-volume afternoon/evening windows differently, since those bursts of attempts are converting far worse than the rest of the day.", "Since insufficient balance and MNO authorization timeouts are customer/network-side conditions, focus effort on retry/nudge messaging around those failure types rather than treating them as integration defects."], "notable_days": [], "notable_hours": ["2026-07-24T15:00:00", "2026-07-25T18:00:00"]}]}
+2026-08-12 11:04:03,982 INFO Claude request for cp_id=134:
+--- system ---
+You are a performance analyst for DTPay, a payment integration platform, writing an analysis that will be shown directly to content-service partners (e.g. KidsFlix, Learn2bFit) about how their service performed.
+
+DTPay routes different products through different payment providers (e.g. pawapay for African mobile money, razorpay for Indian UPI/card/bank payments), given to you as `provider`. What "operator" means in the data depends on it: for a mobile-money provider it's the actual telecom network (MTN, Airtel, ...); for a card/UPI provider it's the payment channel or method instead (upi, card, ...), not a network. Use whichever framing actually fits the given provider rather than assuming it's always a mobile network.
+
+For each service you're given, write:
+- summary: two to four sentences on what's actually happening, grounded in the failure/rejection reasons and operator data - not generic commentary. Refer to the service by its product_name and the country by its full name (both given to you) rather than an ID or abbreviation. Since there's no previous period to compare against here, the daily breakdown (and the hourly one, when given) should be a real part of the summary, not just a source for a rare standout - describe the actual shape of the period (fairly steady throughout, weaker at certain times of day, one day or hour pulling the average down or up) in addition to the reason/operator picture, even when nothing rises to the bar for notable_days/notable_hours specifically.
+- recommendations: 1-3 specific, actionable items tied to the actual data (a specific failure reason, a specific underperforming network or channel), not generic advice like "improve your conversion rate."
+- notable_days: you're also given `daily`, a day-by-day breakdown given as a compact table: the first line names the columns (date, total_resolved, completed, conversion_rate_pct), and each line after that is one day's values in that same order, comma-separated - the same numbers a list of objects would give you, just not repeating the column names on every line. Only include a date here if your summary text explicitly names and discusses that day by weekday - never flag a day here that the summary doesn't actually talk about, since the report highlights these days visually and the reader will expect the text right below to explain why. Use this sparingly: only for a day that's a genuinely clear standout (a real dip or spike), not just modestly above or below the period's average. A day with much lower volume than the others can look artificially swingy in its rate; weigh that before calling it notable at all.
+- notable_hours: you're also given `hourly`, an hour-by-hour breakdown covering the same period as `daily`, in the same compact table format (columns: hour, total_resolved, completed, conversion_rate_pct), when the requested range is short enough for it to be included at all - "(none)" if it wasn't. If a specific hour (or a recurring time of day across multiple days) clearly stands out - a burst of volume, a spike or crash in conversion - name it in your summary and list its exact timestamp (the "hour" column's value) here, same bar as notable_days: a genuinely clear standout, only ever an hour you actually discuss, and weigh low volume before calling one out. If `hourly` is "(none)", leave this empty too.
+
+Rules:
+- Never restate specific conversion percentages, counts, or figures in your text - those are shown to the partner separately, right next to your summary. This applies to daily and hourly figures too, not just the headline ones. Referring to categories ("insufficient balance", "one of the networks") or directional language ("improved", "worsened", "roughly doubled") is fine; restating "3.28%" or "1,401 of 42,684" is not.
+- Do not frame operator- or customer-side issues (insufficient balance, OTP timeout, an operator's own eligibility rules, "no active deposit flow") as the partner's fault - describe those as market/network conditions outside the partner's control, not something for them to fix on their end.
+- If total_resolved is under about 30, say plainly that the volume is too low to draw a real conclusion from, rather than treating a single-digit sample as a meaningful rate.
+
+--- user message ---
+{
+  "services": [
+    {
+      "product_id": 5321,
+      "product_name": "VUZ360",
+      "country": "Uganda",
+      "provider": "pawapay",
+      "total_resolved": 616,
+      "completed": 30,
+      "failed": 586,
+      "conversion_rate_pct": 4.87,
+      "top_reasons": [
+        {
+          "reason": "The customer does not have enough funds to complete the payment or has reached a payment limit.",
+          "occurrences": 317
+        },
+        {
+          "reason": "The payment failed due to an unknown reason.",
+          "occurrences": 145
+        },
+        {
+          "reason": "The customer does not have enough funds to complete the payment.",
+          "occurrences": 57
+        },
+        {
+          "reason": "The customer did not authorize the payment in time or the transaction timed out at the Mobile Network Operator",
+          "occurrences": 52
+        },
+        {
+          "reason": "The phone number does not have a mobile money wallet or does not belong to the telco.",
+          "occurrences": 13
+        }
+      ],
+      "operators": [
+        {
+          "operator": "MTN_MOMO_UGA",
+          "attempts": 397,
+          "ok": 13
+        },
+        {
+          "operator": "AIRTEL_OAPI_UGA",
+          "attempts": 219,
+          "ok": 17
+        }
+      ],
+      "daily": "date,total_resolved,completed,conversion_rate_pct\n2026-07-24,327,16,4.89\n2026-07-25,289,14,4.84",
+      "hourly": "hour,total_resolved,completed,conversion_rate_pct\n2026-07-24T00:00:00,0,0,0.0\n2026-07-24T01:00:00,40,0,0.0\n2026-07-24T02:00:00,21,1,4.76\n2026-07-24T03:00:00,8,0,0.0\n2026-07-24T04:00:00,1,0,0.0\n2026-07-24T05:00:00,3,1,33.33\n2026-07-24T06:00:00,0,0,0.0\n2026-07-24T07:00:00,7,0,0.0\n2026-07-24T08:00:00,6,0,0.0\n2026-07-24T09:00:00,16,1,6.25\n2026-07-24T10:00:00,15,0,0.0\n2026-07-24T11:00:00,5,1,20.0\n2026-07-24T12:00:00,17,1,5.88\n2026-07-24T13:00:00,13,2,15.38\n2026-07-24T14:00:00,57,5,8.77\n2026-07-24T15:00:00,95,2,2.11\n2026-07-24T16:00:00,22,2,9.09\n2026-07-24T17:00:00,1,0,0.0\n2026-07-24T18:00:00,0,0,0.0\n2026-07-24T19:00:00,0,0,0.0\n2026-07-24T20:00:00,0,0,0.0\n2026-07-24T21:00:00,0,0,0.0\n2026-07-24T22:00:00,0,0,0.0\n2026-07-24T23:00:00,0,0,0.0\n2026-07-25T00:00:00,3,0,0.0\n2026-07-25T01:00:00,26,1,3.85\n2026-07-25T02:00:00,6,0,0.0\n2026-07-25T03:00:00,2,0,0.0\n2026-07-25T04:00:00,2,0,0.0\n2026-07-25T05:00:00,2,1,50.0\n2026-07-25T06:00:00,5,0,0.0\n2026-07-25T07:00:00,5,0,0.0\n2026-07-25T08:00:00,6,2,33.33\n2026-07-25T09:00:00,16,1,6.25\n2026-07-25T10:00:00,14,0,0.0\n2026-07-25T11:00:00,20,1,5.0\n2026-07-25T12:00:00,15,1,6.67\n2026-07-25T13:00:00,18,1,5.56\n2026-07-25T14:00:00,3,0,0.0\n2026-07-25T15:00:00,7,2,28.57\n2026-07-25T16:00:00,15,0,0.0\n2026-07-25T17:00:00,13,0,0.0\n2026-07-25T18:00:00,97,3,3.09\n2026-07-25T19:00:00,13,1,7.69\n2026-07-25T20:00:00,0,0,0.0\n2026-07-25T21:00:00,0,0,0.0\n2026-07-25T22:00:00,1,0,0.0\n2026-07-25T23:00:00,0,0,0.0"
+    }
+  ]
+}
+2026-08-12 11:04:14,090 INFO Claude response for cp_id=134:
+{"services": [{"product_id": 5321, "summary": "VUZ360's payment performance in Uganda was weak across both days of this period, with conversion staying low and fairly consistent day to day rather than one day dragging down an otherwise healthy trend. The dominant driver is customer-side insufficient balance, which together accounts for the large majority of failures, followed by a sizable share of unknown-reason failures and a meaningful chunk of authorization timeouts at the mobile network operator level. Both MTN and Airtel show similarly poor conversion, with MTN carrying the bulk of attempts, indicating this is a broad market-condition issue rather than one operator being uniquely at fault. Volume was concentrated in a few peak hours each day (notably mid-afternoon on the 24th and evening on the 25th), but those high-traffic windows did not convert any better than the quieter hours.", "recommendations": ["Since insufficient funds and MNO authorization timeouts dominate failures on both MTN and Airtel, consider adding retry prompts or delayed-retry logic so customers can attempt payment again once they've topped up, rather than losing the transaction outright.", "Investigate the unknown-reason failure bucket with pawapay, as it represents a large enough share of failures to be worth root-causing separately from the funds-related issues.", "Given the concentrated peak-hour volume (afternoon on the 24th, evening on the 25th) showing no conversion improvement over quieter periods, this doesn't appear to be a load/capacity issue, so focus remediation on payment-method education or balance-check prompts before checkout instead."], "notable_days": [], "notable_hours": []}]}

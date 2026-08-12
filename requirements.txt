@@ -3,3 +3,4 @@ anthropic==0.120.2
 python-dotenv==1.2.2
 fastapi==0.141.1
 uvicorn==0.52.0
+redis==8.1.0

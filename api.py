@@ -4,10 +4,11 @@ On-demand performance summary API, plus the follow-up chat.
 POST /summary - JWT in the Authorization header, (uid, start_date,
 end_date, optionally cp_product_id) in the body - returns a JSON
 summary covering whichever products the requesting uid is allowed to
-see: every approved product (or just cp_product_id, if given) for an
-ADMIN; only that uid's own products for anyone else. Also creates a
-chat session (stores the exact data behind this summary) and returns
-its id as session_id, for the "Any Questions?" button to use.
+see. Now checks summary_cache first (see that module for the key
+design and why session_id is never part of what's cached) - on a hit,
+skips straight to creating a fresh chat session from the cached data;
+on a miss, runs the full extract -> rollup -> analyze pipeline as
+before, then caches the result for next time.
 
 POST /chat - JWT in the header, (uid, session_id, message) in the
 body - answers a question about that session's data. See chat.py for
@@ -15,22 +16,6 @@ the guardrail design (no tools, text in and text out only); this file
 just adds the ownership check (a session belongs to exactly the uid
 that created it, unless the requester is ADMIN) and the history/log
 plumbing around it.
-
-Reuses the same extract -> rollup -> analyze pipeline the weekly
-email uses - the only genuinely new logic in /summary is auth.py and
-the HTTP plumbing. Each partner still gets exactly one Claude call
-(rollup_by_partner groups by partner internally even though the
-response below is flattened back into one list), so an ADMIN request
-spanning many partners makes one call per partner, not one giant call
-mixing everyone together.
-
-Deliberately does NOT call merge_with_previous() - an arbitrary date
-range (a day, four days, whatever the dashboard's picker is set to)
-has no well-defined "previous period" to compare against the way a
-calendar week does, so this endpoint never claims one. analyze.py's
-prompt only mentions period-over-period comparison at all when a
-digest's services carry compare_to_previous=True, which only
-merge_with_previous() ever sets.
 
 Run with: uvicorn api:app --host 0.0.0.0 --port 8000
 """
@@ -49,12 +34,10 @@ from rollup import rollup_by_partner
 from analyze import analyze_partner
 from chat import ask as ask_chat
 from chat_store import create_session, get_session, log_message, get_recent_messages, count_user_messages
+import summary_cache
 
 app = FastAPI()
 
-# Deny-by-default: with ALLOWED_ORIGINS unset (empty list), no browser
-# origin is allowed to call this at all - set it to your dashboard's
-# real domain(s) before pointing a browser-based frontend at this.
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -66,26 +49,10 @@ app.add_middleware(
 
 @app.get("/health")
 def health():
-    """Unauthenticated on purpose - a load balancer or uptime monitor
-    needs to reach this without a JWT. Returns nothing beyond a bare
-    OK; it deliberately doesn't touch the database, so it reflects
-    whether the API process itself is up, not whether the DB is
-    reachable - a DB-down state should show up as real request
-    failures, not as this endpoint also going red."""
     return {"status": "ok"}
 
-# Unlike the weekly email, this endpoint has no real volume floor -
-# the dashboard it's attached to already shows low-volume rows
-# without hiding them (a 1-attempt product is a real row in the
-# screenshot this was built from), so summarizing on demand shouldn't
-# silently drop what's already visible on screen. analyze.py's system
-# prompt is told to flag low volume explicitly instead of hiding it.
-ON_DEMAND_MIN_RESOLVED = 1
 
-# Hourly breakdown is only worth computing (and asking Claude to look
-# for hour-level patterns in) for a range short enough that it stays
-# readable - beyond this, it's hundreds of rows and the daily
-# breakdown alone is the more useful view.
+ON_DEMAND_MIN_RESOLVED = 1
 ON_DEMAND_MAX_HOURLY_DAYS = 14
 
 
@@ -109,14 +76,6 @@ def _extract_token(authorization: str) -> str:
     return authorization.strip()
 
 
-def _format_reasons(reasons):
-    return [{"reason": r["reason_code"], "occurrences": r["occurrences"]} for r in reasons]
-
-
-def _format_operators(operators):
-    return [{"operator": o["operator"], "attempts": o["attempts"], "ok": o["operator_ok"]} for o in operators]
-
-
 @app.post("/summary")
 def create_summary(request: SummaryRequest, authorization: str = Header(...)):
     token = _extract_token(authorization)
@@ -134,6 +93,20 @@ def create_summary(request: SummaryRequest, authorization: str = Header(...)):
             status_code=400,
             detail=f"Date range spans {range_days} days; the maximum allowed is {MAX_DATE_RANGE_DAYS}.",
         )
+
+    # Cache check happens AFTER auth/ownership resolve above, never
+    # before - a cache hit must never bypass the authorization check
+    # that decided cp_product_ids in the first place.
+    cache_key = summary_cache.build_key(request.start_date, request.end_date, request.cp_product_id, request.uid)
+    cached = summary_cache.get(cache_key)
+    if cached is not None:
+        session_id = str(uuid4())
+        create_session(
+            session_id=session_id, uid=request.uid, start_date=request.start_date,
+            end_date=request.end_date, cp_product_id=request.cp_product_id,
+            context_data={"date_range": cached["date_range"], "overall": cached["overall"], "products": cached["products"]},
+        )
+        return {"session_id": session_id, **cached}
 
     day_start = datetime.combine(request.start_date, datetime.min.time())
     day_end = datetime.combine(request.end_date, datetime.min.time()) + timedelta(days=1)
@@ -188,13 +161,19 @@ def create_summary(request: SummaryRequest, authorization: str = Header(...)):
                 "recommendations": service.get("recommendations", []),
                 "notable_days": service.get("notable_days", []),
                 "notable_hours": service.get("notable_hours", []),
-                "reasons": _format_reasons(service.get("reasons", [])),
-                "operators": _format_operators(service.get("operators", [])),
+                "reasons": [
+                    {"reason": r["reason_code"], "occurrences": r["occurrences"]}
+                    for r in service.get("reasons", [])
+                ],
+                "operators": [
+                    {"operator": o["operator"], "attempts": o["attempts"], "ok": o["operator_ok"]}
+                    for o in service.get("operators", [])
+                ],
                 "daily": [
                     {"date": d["date"].isoformat(), "total_resolved": d["total_resolved"],
                      "completed": d["completed"], "conversion_rate_pct": d["conversion_rate_pct"],
-                     "reasons": _format_reasons(d.get("reasons", [])),
-                     "operators": _format_operators(d.get("operators", []))}
+                     "reasons": [{"reason": r["reason_code"], "occurrences": r["occurrences"]} for r in d.get("reasons", [])],
+                     "operators": [{"operator": o["operator"], "attempts": o["attempts"], "ok": o["operator_ok"]} for o in d.get("operators", [])]}
                     for d in service.get("daily", [])
                 ],
                 "hourly": [
@@ -206,33 +185,28 @@ def create_summary(request: SummaryRequest, authorization: str = Header(...)):
     products.sort(key=lambda p: (p["cp_id"], p["product_id"]))
 
     overall_rate = round(total_completed / total_resolved * 100, 2) if total_resolved else 0.0
-    overall = {
-        "total_resolved": total_resolved,
-        "completed": total_completed,
-        "conversion_rate_pct": overall_rate,
-    }
 
-    # Same payload that's returned below becomes the chat session's
-    # grounding data - one structure, no separate re-serialization for
-    # storage vs. response.
-    context_data = {
+    result_data = {
         "date_range": {"start": request.start_date.isoformat(), "end": request.end_date.isoformat()},
-        "overall": overall,
-        "products": products,
-    }
-    create_session(
-        session_id=session_id,
-        uid=request.uid, start_date=request.start_date, end_date=request.end_date,
-        cp_product_id=request.cp_product_id, context_data=context_data,
-    )
-
-    return {
-        "session_id": session_id,
-        "date_range": context_data["date_range"],
-        "overall": overall,
+        "overall": {
+            "total_resolved": total_resolved,
+            "completed": total_completed,
+            "conversion_rate_pct": overall_rate,
+        },
         "products": products,
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
+
+    ttl = summary_cache.determine_ttl(request.start_date, request.end_date, date.today())
+    summary_cache.set(cache_key, result_data, ttl)
+
+    context_data = {"date_range": result_data["date_range"], "overall": result_data["overall"], "products": products}
+    create_session(
+        session_id=session_id, uid=request.uid, start_date=request.start_date,
+        end_date=request.end_date, cp_product_id=request.cp_product_id, context_data=context_data,
+    )
+
+    return {"session_id": session_id, **result_data}
 
 
 @app.post("/chat")
@@ -250,10 +224,6 @@ def chat(request: ChatRequest, authorization: str = Header(...)):
         raise HTTPException(status_code=404, detail="Session not found")
     if datetime.now(timezone.utc) > session["expires_at"].replace(tzinfo=timezone.utc):
         raise HTTPException(status_code=410, detail="Session expired")
-    # A session's context_data was already scoped to exactly what its
-    # creator (session["uid"]) was allowed to see when /summary built
-    # it - this only needs to confirm the requester IS that creator
-    # (or an admin), not re-derive product ownership from scratch.
     if session["uid"] != request.uid and role_name != "ADMIN":
         raise HTTPException(status_code=403, detail="This session does not belong to this user")
 

@@ -8,30 +8,9 @@ from dotenv import load_dotenv
 
 load_dotenv()  # reads .env in the project root into the environment
 
-# Nothing in this project had any timeout, anywhere, until a real
-# request hung for 10+ minutes with no response and no error - a slow
-# network to the DB or to Anthropic's API had no way to fail fast, it
-# could only hang forever. These bound every DB connection and every
-# Claude call to a fixed maximum wait, so the failure mode becomes a
-# clear, fast error instead of an unresponsive server.
 DB_CONNECT_TIMEOUT_SECONDS = int(os.environ.get("DB_CONNECT_TIMEOUT_SECONDS", "10"))
 DB_READ_TIMEOUT_SECONDS = int(os.environ.get("DB_READ_TIMEOUT_SECONDS", "30"))
 CLAUDE_TIMEOUT_SECONDS = int(os.environ.get("CLAUDE_TIMEOUT_SECONDS", "60"))
-
-# When true, every Claude call (weekly email, dashboard summary, chat)
-# logs its full system prompt and message payload to agent.log before
-# sending, and the raw response text after - off by default since a
-# payload can run to several KB per call (especially with hourly data
-# included) and isn't something you want written on every request in
-# normal operation, only while actively debugging.
-LOG_CLAUDE_PROMPTS = os.environ.get("LOG_CLAUDE_PROMPTS", "false").lower() == "true"
-
-# Comma-separated list of origins allowed to call the API from a
-# browser (your dashboard's actual domain, e.g.
-# "https://dashboard.dtpay.example"). Empty by default - deny by
-# default rather than defaulting to "*", since an unset value here
-# should mean "nothing is allowed yet", not "everything is".
-ALLOWED_ORIGINS = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()]
 
 DB_CONFIG = {
     "host": os.environ.get("DTPAY_DB_HOST", "localhost"),
@@ -47,35 +26,37 @@ DB_CONFIG = {
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY")
 
-# Services with fewer resolved transactions than this in a given week
-# are excluded before Claude or the email ever see them - a handful of
-# hits produces a meaningless conversion rate either way.
 MIN_RESOLVED_THRESHOLD = int(os.environ.get("MIN_RESOLVED_THRESHOLD", "100"))
-
-# The on-demand API rejects any request spanning more than this many
-# days (inclusive of both start_date and end_date) rather than
-# processing it - change by updating this env var and restarting the
-# API process, no code change or redeploy needed.
 MAX_DATE_RANGE_DAYS = int(os.environ.get("MAX_DATE_RANGE_DAYS", "7"))
-
-# Hard cap on how many questions a user may ask in one chat session -
-# the 5th question is still answered, a 6th attempt is rejected
-# outright before it reaches Claude. Distinct from CHAT_HISTORY_LIMIT
-# in chat_store.py, which controls how many past rows get resent to
-# Claude as context on each turn - that one trims history, this one
-# blocks further messages entirely once reached.
 MAX_QUESTIONS_PER_SESSION = int(os.environ.get("MAX_QUESTIONS_PER_SESSION", "5"))
 
-SMTP_CONFIG = {
-    "host": os.environ.get("SMTP_HOST", "localhost"),
-    "port": int(os.environ.get("SMTP_PORT", "587")),
-    "user": os.environ.get("SMTP_USER"),
-    "password": os.environ.get("SMTP_PASSWORD"),
-    "from_address": os.environ.get("SMTP_FROM", "noreply@dtpay.example"),
-}
+SMTP_HOST = os.environ.get("SMTP_HOST")
+SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+SMTP_USER = os.environ.get("SMTP_USER")
+SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD")
+SMTP_FROM = os.environ.get("SMTP_FROM", "noreply@dtpay.example")
 
-# Defaults to True on purpose - the first runs should write emails
-# somewhere a human can read them, not send to real partners. Flip to
-# "false" only once you've eyeballed a few days of review output.
 REVIEW_MODE = os.environ.get("REVIEW_MODE", "true").lower() == "true"
 REVIEW_OUTPUT_DIR = os.environ.get("REVIEW_OUTPUT_DIR", "./review_output")
+
+LOG_CLAUDE_PROMPTS = os.environ.get("LOG_CLAUDE_PROMPTS", "false").lower() == "true"
+
+ALLOWED_ORIGINS = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()]
+
+# Redis cache for /summary responses - see summary_cache.py for the
+# key design and why session_id is deliberately excluded from what
+# gets cached.
+REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
+REDIS_PORT = int(os.environ.get("REDIS_PORT", "6379"))
+REDIS_DB = int(os.environ.get("REDIS_DB", "0"))
+REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD") or None
+
+# Two different TTLs on purpose: a range that includes today is still
+# genuinely moving (transactions keep resolving throughout the day -
+# confirmed directly a few messages back, comparing our numbers
+# against the dashboard at two different query times), so it gets a
+# much shorter cache life than a fully historical range, which
+# shouldn't change anymore once the underlying transactions have
+# settled.
+SUMMARY_CACHE_TTL_SECONDS = int(os.environ.get("SUMMARY_CACHE_TTL_SECONDS", str(24 * 60 * 60)))       # 24h
+SUMMARY_CACHE_TTL_TODAY_SECONDS = int(os.environ.get("SUMMARY_CACHE_TTL_TODAY_SECONDS", str(4 * 60 * 60)))  # 4h
