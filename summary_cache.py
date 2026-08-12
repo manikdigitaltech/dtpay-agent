@@ -37,7 +37,7 @@ import json
 import redis
 
 from config import (
-    REDIS_HOST, REDIS_PORT, REDIS_DB, REDIS_PASSWORD,
+    REDIS_HOST, REDIS_PORT, REDIS_DB, REDIS_PASSWORD, REDIS_KEY_PREFIX,
     SUMMARY_CACHE_TTL_SECONDS, SUMMARY_CACHE_TTL_TODAY_SECONDS,
 )
 
@@ -56,8 +56,10 @@ def _get_client():
 
 def build_key(start_date, end_date, cp_product_id, uid):
     if cp_product_id is not None:
-        return f"summary:{start_date.isoformat()}:{end_date.isoformat()}:product:{cp_product_id}"
-    return f"summary:{start_date.isoformat()}:{end_date.isoformat()}:uid:{uid}"
+        suffix = f"summary:{start_date.isoformat()}:{end_date.isoformat()}:product:{cp_product_id}"
+    else:
+        suffix = f"summary:{start_date.isoformat()}:{end_date.isoformat()}:uid:{uid}"
+    return f"{REDIS_KEY_PREFIX}{suffix}"
 
 
 def determine_ttl(start_date, end_date, today):

@@ -50,6 +50,11 @@ REDIS_HOST = os.environ.get("REDIS_HOST", "localhost")
 REDIS_PORT = int(os.environ.get("REDIS_PORT", "6379"))
 REDIS_DB = int(os.environ.get("REDIS_DB", "0"))
 REDIS_PASSWORD = os.environ.get("REDIS_PASSWORD") or None
+# Namespaces every key this app writes - matters once this Redis
+# instance is shared with other services, so a key this app uses can
+# never collide with an unrelated key some other service happens to
+# use too.
+REDIS_KEY_PREFIX = os.environ.get("REDIS_KEY_PREFIX", "DTPAY-AGENT-")
 
 # Two different TTLs on purpose: a range that includes today is still
 # genuinely moving (transactions keep resolving throughout the day -
