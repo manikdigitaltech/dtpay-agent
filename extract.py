@@ -197,7 +197,9 @@ PAYOUT_HOURLY_STATUS_COUNTS_SQL = """
 # error_message is already human-readable (no CODE# prefix the way
 # cb_error_message had), so this is a direct read, no splitting needed.
 PAYOUT_REASON_COUNTS_SQL = """
-    SELECT product_id, agg_name AS provider, status, error_message AS reason_code, COUNT(*) AS count
+    SELECT product_id, agg_name AS provider, status,
+        CASE WHEN error_message = 'Success' THEN status ELSE error_message END AS reason_code,
+        COUNT(*) AS count
     FROM payout_logs
     WHERE cp_product_id IN %(cp_product_ids)s AND date_time >= %(day_start)s AND date_time < %(day_end)s
       AND request_type IN ('newpurchase', 'repurchase')
@@ -206,7 +208,8 @@ PAYOUT_REASON_COUNTS_SQL = """
 
 PAYOUT_DAILY_REASON_COUNTS_SQL = """
     SELECT product_id, DATE(date_time) AS day, agg_name AS provider, status,
-           error_message AS reason_code, COUNT(*) AS count
+           CASE WHEN error_message = 'Success' THEN status ELSE error_message END AS reason_code,
+           COUNT(*) AS count
     FROM payout_logs
     WHERE cp_product_id IN %(cp_product_ids)s AND date_time >= %(day_start)s AND date_time < %(day_end)s
       AND request_type IN ('newpurchase', 'repurchase')

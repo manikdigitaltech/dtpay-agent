@@ -51,14 +51,23 @@ PROVIDER_RULES = {
         "payout_excluded_statuses": {"FREQUENT_REQUESTS", "DAY_LIMIT_EXCEED"},
     },
     "razorpay": {
+        # Legacy, payment_transactions-based rules - kept for
+        # reference/rollback, no longer the active path.
         "success_statuses": {"AUTHORIZED"},
         "excluded_statuses": {"QUEUED"},
-        "payout_success_statuses": {"AUTHORIZED", "COMPLETED"},
         "comparison_field": "channel",
-        # Deliberately NOT set - razorpay stays on the
-        # payment_transactions-based path until we look at its
-        # payout_logs data the same way pawapay's was just examined.
-        "uses_payout_logs_metrics": False,
+        # Live rules: confirmed against real payout_logs data - every
+        # row's error_message is 'Success' regardless of outcome (no
+        # differentiating value the way pawapay's is), so reason
+        # derivation for razorpay falls back to status instead (see
+        # extract.py's PAYOUT_REASON_COUNTS_SQL). The null-status rows
+        # (always deposite-channel, no subscription_id) are pre-click
+        # noise - a subscription placeholder created before the user
+        # picks a real payment method - confirmed at 99.5% scale
+        # against real data, not just the earlier small-sample finding.
+        "uses_payout_logs_metrics": True,
+        "payout_success_statuses": {"AUTHORIZED", "COMPLETED"},
+        "payout_excluded_statuses": {None},
     },
 }
 
