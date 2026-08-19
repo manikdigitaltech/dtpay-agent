@@ -35,6 +35,7 @@ from analyze import analyze_partner
 from chat import ask as ask_chat
 from chat_store import create_session, get_session, log_message, get_recent_messages, count_user_messages
 import summary_cache
+from response_sanitizer import sanitize_aggregator_names
 
 app = FastAPI()
 
@@ -106,7 +107,7 @@ def create_summary(request: SummaryRequest, authorization: str = Header(...)):
             end_date=request.end_date, cp_product_id=request.cp_product_id,
             context_data={"date_range": cached["date_range"], "overall": cached["overall"], "products": cached["products"]},
         )
-        return {"session_id": session_id, **cached}
+        return sanitize_aggregator_names({"session_id": session_id, **cached})
 
     day_start = datetime.combine(request.start_date, datetime.min.time())
     day_end = datetime.combine(request.end_date, datetime.min.time()) + timedelta(days=1)
@@ -206,7 +207,7 @@ def create_summary(request: SummaryRequest, authorization: str = Header(...)):
         end_date=request.end_date, cp_product_id=request.cp_product_id, context_data=context_data,
     )
 
-    return {"session_id": session_id, **result_data}
+    return sanitize_aggregator_names({"session_id": session_id, **result_data})
 
 
 @app.post("/chat")
@@ -247,4 +248,4 @@ def chat(request: ChatRequest, authorization: str = Header(...)):
                 cache_creation_input_tokens=result["cache_creation_input_tokens"],
                 cache_read_input_tokens=result["cache_read_input_tokens"])
 
-    return {"session_id": request.session_id, "answer": result["answer"]}
+    return {"session_id": request.session_id, "answer": sanitize_aggregator_names(result["answer"])}
