@@ -49,6 +49,12 @@ PROVIDER_RULES = {
         "uses_payout_logs_metrics": True,
         "payout_success_statuses": {"COMPLETED"},
         "payout_excluded_statuses": {"FREQUENT_REQUESTS", "DAY_LIMIT_EXCEED"},
+        # Every non-success status here has a genuine, specific reason
+        # (cb_error_message/partner_error_message), and every operator
+        # name is a real network - nothing to exclude from either
+        # breakdown the way razorpay needs below.
+        "reason_excluded_statuses": set(),
+        "excluded_comparison_values": set(),
     },
     "razorpay": {
         # Legacy, payment_transactions-based rules - kept for
@@ -56,6 +62,7 @@ PROVIDER_RULES = {
         "success_statuses": {"AUTHORIZED"},
         "excluded_statuses": {"QUEUED"},
         "comparison_field": "channel",
+        "comparison_label": "channel",  # what the API response calls this section - "channel", not "operator"
         # Live rules: confirmed against real payout_logs data - every
         # row's error_message is 'Success' regardless of outcome (no
         # differentiating value the way pawapay's is), so reason
@@ -68,6 +75,18 @@ PROVIDER_RULES = {
         "uses_payout_logs_metrics": True,
         "payout_success_statuses": {"AUTHORIZED", "COMPLETED"},
         "payout_excluded_statuses": {None},
+        # Subscription_Created and deposite are the same underlying
+        # event (confirmed: perfectly correlated, zero overlap with
+        # upi/success) - the user clicked but never reached a real
+        # payment method. Neither is diagnostic the way pawapay's
+        # reasons are, and deposite isn't a channel competing against
+        # upi/card/emandate - it's "no channel chosen yet." Both still
+        # count toward total_resolved (a real resolved-but-not-
+        # converted outcome), just excluded from these two breakdowns
+        # specifically, since there's genuinely nothing more specific
+        # to report for them.
+        "reason_excluded_statuses": {"Subscription_Created"},
+        "excluded_comparison_values": {"deposite"},
     },
 }
 
@@ -262,8 +281,11 @@ def filter_reason_rows(rows):
 def filter_payout_reason_rows(rows):
     """
     New path: same idea as filter_reason_rows, but for payout_logs
-    rows - drops anything excluded or successful, using the
-    payout_* rule set instead of the transaction_status one.
+    rows - drops anything excluded, successful, or non-diagnostic
+    (reason_excluded_statuses - a status that still counts toward
+    total_resolved but has no genuine reason to report, like
+    razorpay's Subscription_Created), using the payout_* rule set
+    instead of the transaction_status one.
     """
     kept = []
     for row in rows:
@@ -271,7 +293,8 @@ def filter_payout_reason_rows(rows):
         if rules is None:
             continue
         status = row["status"]
-        if status in rules["payout_excluded_statuses"] or status in rules["payout_success_statuses"]:
+        if (status in rules["payout_excluded_statuses"] or status in rules["payout_success_statuses"]
+                or status in rules.get("reason_excluded_statuses", set())):
             continue
         kept.append(row)
     return kept
@@ -323,7 +346,7 @@ def classify_operator_counts(rows, by_day=False):
         if rules.get("uses_payout_logs_metrics") and row["status"] in rules.get("payout_excluded_statuses", set()):
             continue
         field_value = row.get(rules["comparison_field"])
-        if field_value is None:
+        if field_value is None or field_value in rules.get("excluded_comparison_values", set()):
             continue
         key = (row["product_id"], row["day"], field_value) if by_day else (row["product_id"], field_value)
         by_key[key]["attempts"] += row["count"]

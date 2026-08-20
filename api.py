@@ -30,6 +30,7 @@ from pydantic import BaseModel
 from auth import authenticate, get_role, resolve_cp_product_ids, AuthError
 from config import MAX_DATE_RANGE_DAYS, MAX_QUESTIONS_PER_SESSION, ALLOWED_ORIGINS
 from extract import fetch_all
+from providers import PROVIDER_RULES
 from rollup import rollup_by_partner
 from analyze import analyze_partner
 from chat import ask as ask_chat
@@ -75,6 +76,10 @@ def _extract_token(authorization: str) -> str:
     if authorization.lower().startswith(prefix):
         return authorization[len(prefix):].strip()
     return authorization.strip()
+
+
+def _comparison_entries(entries, label):
+    return [{label: e["operator"], "attempts": e["attempts"], "ok": e["operator_ok"]} for e in entries]
 
 
 @app.post("/summary")
@@ -148,7 +153,8 @@ def create_summary(request: SummaryRequest, authorization: str = Header(...)):
         for service in digest["services"]:
             total_resolved += service["total_resolved"]
             total_completed += service["completed"]
-            products.append({
+            comparison_label = PROVIDER_RULES.get(service["provider"], {}).get("comparison_label", "operator")
+            product = {
                 "product_id": service["product_id"],
                 "product_name": service["product_name"],
                 "country": service["country"],
@@ -166,15 +172,11 @@ def create_summary(request: SummaryRequest, authorization: str = Header(...)):
                     {"reason": r["reason_code"], "occurrences": r["occurrences"]}
                     for r in service.get("reasons", [])
                 ],
-                "operators": [
-                    {"operator": o["operator"], "attempts": o["attempts"], "ok": o["operator_ok"]}
-                    for o in service.get("operators", [])
-                ],
                 "daily": [
                     {"date": d["date"].isoformat(), "total_resolved": d["total_resolved"],
                      "completed": d["completed"], "conversion_rate_pct": d["conversion_rate_pct"],
                      "reasons": [{"reason": r["reason_code"], "occurrences": r["occurrences"]} for r in d.get("reasons", [])],
-                     "operators": [{"operator": o["operator"], "attempts": o["attempts"], "ok": o["operator_ok"]} for o in d.get("operators", [])]}
+                     comparison_label + "s": _comparison_entries(d.get("operators", []), comparison_label)}
                     for d in service.get("daily", [])
                 ],
                 "hourly": [
@@ -182,7 +184,9 @@ def create_summary(request: SummaryRequest, authorization: str = Header(...)):
                      "completed": h["completed"], "conversion_rate_pct": h["conversion_rate_pct"]}
                     for h in service.get("hourly", [])
                 ] if include_hourly else None,
-            })
+            }
+            product[comparison_label + "s"] = _comparison_entries(service.get("operators", []), comparison_label)
+            products.append(product)
     products.sort(key=lambda p: (p["cp_id"], p["product_id"]))
 
     overall_rate = round(total_completed / total_resolved * 100, 2) if total_resolved else 0.0
