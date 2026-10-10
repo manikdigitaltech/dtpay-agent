@@ -1050,3 +1050,229 @@ Rules:
 }
 2026-08-12 11:04:14,090 INFO Claude response for cp_id=134:
 {"services": [{"product_id": 5321, "summary": "VUZ360's payment performance in Uganda was weak across both days of this period, with conversion staying low and fairly consistent day to day rather than one day dragging down an otherwise healthy trend. The dominant driver is customer-side insufficient balance, which together accounts for the large majority of failures, followed by a sizable share of unknown-reason failures and a meaningful chunk of authorization timeouts at the mobile network operator level. Both MTN and Airtel show similarly poor conversion, with MTN carrying the bulk of attempts, indicating this is a broad market-condition issue rather than one operator being uniquely at fault. Volume was concentrated in a few peak hours each day (notably mid-afternoon on the 24th and evening on the 25th), but those high-traffic windows did not convert any better than the quieter hours.", "recommendations": ["Since insufficient funds and MNO authorization timeouts dominate failures on both MTN and Airtel, consider adding retry prompts or delayed-retry logic so customers can attempt payment again once they've topped up, rather than losing the transaction outright.", "Investigate the unknown-reason failure bucket with pawapay, as it represents a large enough share of failures to be worth root-causing separately from the funds-related issues.", "Given the concentrated peak-hour volume (afternoon on the 24th, evening on the 25th) showing no conversion improvement over quieter periods, this doesn't appear to be a load/capacity issue, so focus remediation on payment-method education or balance-check prompts before checkout instead."], "notable_days": [], "notable_hours": []}]}
+2026-10-10 20:38:57,863 INFO Claude request for cp_id=122:
+--- system ---
+You are a performance analyst for DTPay, a payment integration platform, writing an analysis that will be shown directly to content-service partners (e.g. KidsFlix, Learn2bFit) about how their service performed.
+
+DTPay routes different products through different payment providers (e.g. pawapay for African mobile money, razorpay for Indian UPI/card/bank payments), given to you as `provider`. What "operator" means in the data depends on it: for a mobile-money provider it's the actual telecom network (MTN, Airtel, ...); for a card/UPI provider it's the payment channel or method instead (upi, card, ...), not a network. Use whichever framing actually fits the given provider rather than assuming it's always a mobile network.
+
+For each service you're given, write:
+- summary: two to four sentences on what's actually happening, grounded in the failure/rejection reasons and operator data - not generic commentary. Refer to the service by its product_name and the country by its full name (both given to you) rather than an ID or abbreviation. Since there's no previous period to compare against here, the daily breakdown (and the hourly one, when given) should be a real part of the summary, not just a source for a rare standout - describe the actual shape of the period (fairly steady throughout, weaker at certain times of day, one day or hour pulling the average down or up) in addition to the reason/operator picture, even when nothing rises to the bar for notable_days/notable_hours specifically.
+- recommendations: 1-3 specific, actionable items tied to the actual data (a specific failure reason, a specific underperforming network or channel), not generic advice like "improve your conversion rate."
+- notable_days: you're also given `daily`, a day-by-day breakdown given as a compact table: the first line names the columns (date, total_resolved, completed, conversion_rate_pct), and each line after that is one day's values in that same order, comma-separated - the same numbers a list of objects would give you, just not repeating the column names on every line. Only include a date here if your summary text explicitly names and discusses that day by weekday - never flag a day here that the summary doesn't actually talk about, since the report highlights these days visually and the reader will expect the text right below to explain why. Use this sparingly: only for a day that's a genuinely clear standout (a real dip or spike), not just modestly above or below the period's average. A day with much lower volume than the others can look artificially swingy in its rate; weigh that before calling it notable at all.
+- notable_hours: you're also given `hourly`, an hour-by-hour breakdown covering the same period as `daily`, in the same compact table format (columns: hour, total_resolved, completed, conversion_rate_pct), when the requested range is short enough for it to be included at all - "(none)" if it wasn't. If a specific hour (or a recurring time of day across multiple days) clearly stands out - a burst of volume, a spike or crash in conversion - name it in your summary and list its exact timestamp (the "hour" column's value) here, same bar as notable_days: a genuinely clear standout, only ever an hour you actually discuss, and weigh low volume before calling one out. If `hourly` is "(none)", leave this empty too.
+- campaign_overview and campaigns: some services also have `campaigns`, the same service's traffic split by marketing campaign (the service's totals are exactly the sum of its campaigns), each with its own numbers, top_reasons and operators. For those, write campaign_overview: one to two sentences comparing the campaigns against each other - which are converting best and worst relative to the rest, and what in their reasons or operator/channel mix most likely explains the gap. Then, in campaigns, one sentence per campaign (keyed by its campaign_id, exactly as given) on how that campaign is doing and why. Refer to campaigns by campaign_name, never by ID. A campaign with much lower volume than the others can look artificially strong or weak - say so instead of ranking it. For a service with no `campaigns`, return an empty campaign_overview and an empty campaigns list.
+
+Rules:
+- Never restate specific conversion percentages, counts, or figures in your text - those are shown to the partner separately, right next to your summary. This applies to daily and hourly figures too, not just the headline ones. Referring to categories ("insufficient balance", "one of the networks") or directional language ("improved", "worsened", "roughly doubled") is fine; restating "3.28%" or "1,401 of 42,684" is not.
+- Do not frame operator- or customer-side issues (insufficient balance, OTP timeout, an operator's own eligibility rules, "no active deposit flow") as the partner's fault - describe those as market/network conditions outside the partner's control, not something for them to fix on their end.
+- If total_resolved is under about 30, say plainly that the volume is too low to draw a real conclusion from, rather than treating a single-digit sample as a meaningful rate.
+
+--- user message ---
+{
+  "services": [
+    {
+      "product_id": 5345,
+      "product_name": "Learn2bFit150",
+      "country": "India",
+      "provider": "razorpay",
+      "total_resolved": 10758,
+      "completed": 1003,
+      "failed": 9755,
+      "conversion_rate_pct": 9.32,
+      "top_reasons": [
+        {
+          "reason": "request_timed_out",
+          "occurrences": 1758
+        },
+        {
+          "reason": "insufficient_funds",
+          "occurrences": 255
+        },
+        {
+          "reason": "payment_declined",
+          "occurrences": 76
+        },
+        {
+          "reason": "payment_cancelled",
+          "occurrences": 10
+        },
+        {
+          "reason": "debit_instrument_blocked",
+          "occurrences": 5
+        }
+      ],
+      "operators": [
+        {
+          "operator": "upi",
+          "attempts": 3114,
+          "ok": 1001
+        },
+        {
+          "operator": "emandate",
+          "attempts": 5,
+          "ok": 0
+        },
+        {
+          "operator": "card",
+          "attempts": 1,
+          "ok": 1
+        }
+      ],
+      "daily": "date,total_resolved,completed,conversion_rate_pct\n2026-10-03,1698,200,11.78\n2026-10-04,1764,174,9.86\n2026-10-05,4731,323,6.83\n2026-10-06,496,49,9.88\n2026-10-07,127,20,15.75\n2026-10-08,1446,178,12.31\n2026-10-09,496,59,11.9",
+      "hourly": "hour,total_resolved,completed,conversion_rate_pct\n2026-10-03T00:00:00,1,0,0.0\n2026-10-03T01:00:00,0,0,0.0\n2026-10-03T02:00:00,0,0,0.0\n2026-10-03T03:00:00,1,0,0.0\n2026-10-03T04:00:00,2,0,0.0\n2026-10-03T05:00:00,9,3,33.33\n2026-10-03T06:00:00,7,1,14.29\n2026-10-03T07:00:00,27,1,3.7\n2026-10-03T08:00:00,14,9,64.29\n2026-10-03T09:00:00,45,2,4.44\n2026-10-03T10:00:00,122,17,13.93\n2026-10-03T11:00:00,233,22,9.44\n2026-10-03T12:00:00,218,29,13.3\n2026-10-03T13:00:00,189,20,10.58\n2026-10-03T14:00:00,165,32,19.39\n2026-10-03T15:00:00,114,7,6.14\n2026-10-03T16:00:00,98,7,7.14\n2026-10-03T17:00:00,130,9,6.92\n2026-10-03T18:00:00,201,28,13.93\n2026-10-03T19:00:00,121,13,10.74\n2026-10-03T20:00:00,1,0,0.0\n2026-10-03T21:00:00,0,0,0.0\n2026-10-03T22:00:00,0,0,0.0\n2026-10-03T23:00:00,0,0,0.0\n2026-10-04T00:00:00,37,2,5.41\n2026-10-04T01:00:00,5,2,40.0\n2026-10-04T02:00:00,4,0,0.0\n2026-10-04T03:00:00,10,1,10.0\n2026-10-04T04:00:00,18,4,22.22\n2026-10-04T05:00:00,30,1,3.33\n2026-10-04T06:00:00,28,5,17.86\n2026-10-04T07:00:00,34,9,26.47\n2026-10-04T08:00:00,35,3,8.57\n2026-10-04T09:00:00,52,5,9.62\n2026-10-04T10:00:00,123,10,8.13\n2026-10-04T11:00:00,148,10,6.76\n2026-10-04T12:00:00,135,19,14.07\n2026-10-04T13:00:00,122,12,9.84\n2026-10-04T14:00:00,131,9,6.87\n2026-10-04T15:00:00,125,10,8.0\n2026-10-04T16:00:00,101,12,11.88\n2026-10-04T17:00:00,124,12,9.68\n2026-10-04T18:00:00,138,10,7.25\n2026-10-04T19:00:00,282,29,10.28\n2026-10-04T20:00:00,57,5,8.77\n2026-10-04T21:00:00,16,2,12.5\n2026-10-04T22:00:00,9,2,22.22\n2026-10-04T23:00:00,0,0,0.0\n2026-10-05T00:00:00,27,2,7.41\n2026-10-05T01:00:00,21,1,4.76\n2026-10-05T02:00:00,20,2,10.0\n2026-10-05T03:00:00,24,1,4.17\n2026-10-05T04:00:00,35,2,5.71\n2026-10-05T05:00:00,58,5,8.62\n2026-10-05T06:00:00,60,1,1.67\n2026-10-05T07:00:00,60,4,6.67\n2026-10-05T08:00:00,89,5,5.62\n2026-10-05T09:00:00,111,15,13.51\n2026-10-05T10:00:00,153,12,7.84\n2026-10-05T11:00:00,130,12,9.23\n2026-10-05T12:00:00,98,6,6.12\n2026-10-05T13:00:00,133,10,7.52\n2026-10-05T14:00:00,161,8,4.97\n2026-10-05T15:00:00,110,9,8.18\n2026-10-05T16:00:00,94,9,9.57\n2026-10-05T17:00:00,126,4,3.17\n2026-10-05T18:00:00,137,9,6.57\n2026-10-05T19:00:00,217,17,7.83\n2026-10-05T20:00:00,1427,92,6.45\n2026-10-05T21:00:00,1278,89,6.96\n2026-10-05T22:00:00,160,8,5.0\n2026-10-05T23:00:00,2,0,0.0\n2026-10-06T00:00:00,39,5,12.82\n2026-10-06T01:00:00,7,1,14.29\n2026-10-06T02:00:00,4,0,0.0\n2026-10-06T03:00:00,10,1,10.0\n2026-10-06T04:00:00,12,0,0.0\n2026-10-06T05:00:00,24,1,4.17\n2026-10-06T06:00:00,17,4,23.53\n2026-10-06T07:00:00,27,3,11.11\n2026-10-06T08:00:00,19,4,21.05\n2026-10-06T09:00:00,15,2,13.33\n2026-10-06T10:00:00,29,1,3.45\n2026-10-06T11:00:00,23,3,13.04\n2026-10-06T12:00:00,14,2,14.29\n2026-10-06T13:00:00,23,2,8.7\n2026-10-06T14:00:00,9,1,11.11\n2026-10-06T15:00:00,13,1,7.69\n2026-10-06T16:00:00,5,0,0.0\n2026-10-06T17:00:00,7,2,28.57\n2026-10-06T18:00:00,17,1,5.88\n2026-10-06T19:00:00,20,4,20.0\n2026-10-06T20:00:00,37,1,2.7\n2026-10-06T21:00:00,63,3,4.76\n2026-10-06T22:00:00,51,6,11.76\n2026-10-06T23:00:00,11,1,9.09\n2026-10-07T00:00:00,8,0,0.0\n2026-10-07T01:00:00,3,0,0.0\n2026-10-07T02:00:00,1,0,0.0\n2026-10-07T03:00:00,2,0,0.0\n2026-10-07T04:00:00,2,0,0.0\n2026-10-07T05:00:00,5,0,0.0\n2026-10-07T06:00:00,4,1,25.0\n2026-10-07T07:00:00,3,1,33.33\n2026-10-07T08:00:00,7,0,0.0\n2026-10-07T09:00:00,16,2,12.5\n2026-10-07T10:00:00,5,3,60.0\n2026-10-07T11:00:00,0,0,0.0\n2026-10-07T12:00:00,7,3,42.86\n2026-10-07T13:00:00,3,0,0.0\n2026-10-07T14:00:00,3,1,33.33\n2026-10-07T15:00:00,2,1,50.0\n2026-10-07T16:00:00,2,0,0.0\n2026-10-07T17:00:00,3,0,0.0\n2026-10-07T18:00:00,1,1,100.0\n2026-10-07T19:00:00,9,0,0.0\n2026-10-07T20:00:00,11,3,27.27\n2026-10-07T21:00:00,15,1,6.67\n2026-10-07T22:00:00,12,2,16.67\n2026-10-07T23:00:00,3,1,33.33\n2026-10-08T00:00:00,1,1,100.0\n2026-10-08T01:00:00,0,0,0.0\n2026-10-08T02:00:00,0,0,0.0\n2026-10-08T03:00:00,2,0,0.0\n2026-10-08T04:00:00,2,1,50.0\n2026-10-08T05:00:00,7,0,0.0\n2026-10-08T06:00:00,6,2,33.33\n2026-10-08T07:00:00,4,1,25.0\n2026-10-08T08:00:00,17,2,11.76\n2026-10-08T09:00:00,16,3,18.75\n2026-10-08T10:00:00,30,4,13.33\n2026-10-08T11:00:00,28,3,10.71\n2026-10-08T12:00:00,30,4,13.33\n2026-10-08T13:00:00,54,7,12.96\n2026-10-08T14:00:00,56,5,8.93\n2026-10-08T15:00:00,45,7,15.56\n2026-10-08T16:00:00,47,6,12.77\n2026-10-08T17:00:00,70,7,10.0\n2026-10-08T18:00:00,158,20,12.66\n2026-10-08T19:00:00,120,14,11.67\n2026-10-08T20:00:00,173,20,11.56\n2026-10-08T21:00:00,376,47,12.5\n2026-10-08T22:00:00,180,21,11.67\n2026-10-08T23:00:00,24,3,12.5\n2026-10-09T00:00:00,2,0,0.0\n2026-10-09T01:00:00,2,0,0.0\n2026-10-09T02:00:00,4,0,0.0\n2026-10-09T03:00:00,2,0,0.0\n2026-10-09T04:00:00,3,1,33.33\n2026-10-09T05:00:00,6,0,0.0\n2026-10-09T06:00:00,8,2,25.0\n2026-10-09T07:00:00,6,0,0.0\n2026-10-09T08:00:00,8,1,12.5\n2026-10-09T09:00:00,3,1,33.33\n2026-10-09T10:00:00,21,2,9.52\n2026-10-09T11:00:00,7,1,14.29\n2026-10-09T12:00:00,35,1,2.86\n2026-10-09T13:00:00,9,3,33.33\n2026-10-09T14:00:00,9,0,0.0\n2026-10-09T15:00:00,8,2,25.0\n2026-10-09T16:00:00,6,1,16.67\n2026-10-09T17:00:00,28,5,17.86\n2026-10-09T18:00:00,48,3,6.25\n2026-10-09T19:00:00,63,6,9.52\n2026-10-09T20:00:00,60,6,10.0\n2026-10-09T21:00:00,90,10,11.11\n2026-10-09T22:00:00,55,11,20.0\n2026-10-09T23:00:00,13,3,23.08",
+      "campaigns": [
+        {
+          "campaign_id": "mFTuVimSMRzg2UjGI5u7",
+          "campaign_name": "Razorpay Learn2BFit  Monthly(150)",
+          "total_resolved": 10718,
+          "completed": 1001,
+          "conversion_rate_pct": 9.34,
+          "top_reasons": [
+            {
+              "reason": "request_timed_out",
+              "occurrences": 1750
+            },
+            {
+              "reason": "insufficient_funds",
+              "occurrences": 255
+            },
+            {
+              "reason": "payment_declined",
+              "occurrences": 76
+            }
+          ],
+          "operators": [
+            {
+              "operator": "upi",
+              "attempts": 3100,
+              "ok": 999
+            },
+            {
+              "operator": "emandate",
+              "attempts": 5,
+              "ok": 0
+            },
+            {
+              "operator": "card",
+              "attempts": 1,
+              "ok": 1
+            }
+          ]
+        },
+        {
+          "campaign_id": "Gi9m1XG5nJxMOsar7EaG",
+          "campaign_name": "Razorpay L2BF-VT- Monthly(150)",
+          "total_resolved": 39,
+          "completed": 2,
+          "conversion_rate_pct": 5.13,
+          "top_reasons": [
+            {
+              "reason": "request_timed_out",
+              "occurrences": 8
+            },
+            {
+              "reason": "payment_cancelled",
+              "occurrences": 4
+            }
+          ],
+          "operators": [
+            {
+              "operator": "upi",
+              "attempts": 14,
+              "ok": 2
+            }
+          ]
+        },
+        {
+          "campaign_id": "n8SrX6C4aZBy7Jmqi5gb",
+          "campaign_name": "(no campaign)",
+          "total_resolved": 1,
+          "completed": 0,
+          "conversion_rate_pct": 0.0,
+          "top_reasons": [],
+          "operators": []
+        }
+      ]
+    }
+  ]
+}
+2026-10-10 20:39:10,370 INFO Claude response for cp_id=122:
+{"services": [{"product_id": 5345, "summary": "Learn2bFit150's India traffic through razorpay converted in the single digits overall, with request timeouts dominating failures by a wide margin over insufficient funds and outright declines. Volume was fairly steady across most days, but October 5th saw a large surge in resolved volume concentrated in the late evening hours, and that same day posted the weakest conversion rate of the period, dragging the overall average down. October 7th, by contrast, showed a much higher rate, but its volume was tiny compared to other days so that figure shouldn't be read as a real improvement. The UPI channel carries nearly all the volume and is where the timeout problem is concentrated, since card and emandate attempts are too few to be meaningful.", "recommendations": ["Investigate the request_timed_out failures on UPI specifically, since they account for the large majority of lost transactions and point to latency or confirmation delays in the UPI flow rather than user-side rejection.", "Consider adding retry prompts or fallback messaging around the October 5th evening surge window (20:00-21:00), when volume spiked sharply and conversion dropped, suggesting the payment flow may struggle under higher load.", "Treat emandate and card as unproven channels given their negligible attempt counts rather than drawing conclusions about their performance."], "notable_days": ["2026-10-05"], "notable_hours": ["2026-10-05T20:00:00", "2026-10-05T21:00:00"], "campaign_overview": "The Monthly(150) campaign carries almost all the volume and its conversion rate essentially sets the service average, while the VT-Monthly(150) campaign converts somewhat worse but on a small enough sample that it's hard to call a real gap; the unlabeled campaign has only a single transaction and tells us nothing.", "campaigns": [{"campaign_id": "mFTuVimSMRzg2UjGI5u7", "summary": "This campaign represents nearly the entire service's volume and mirrors its overall pattern, with request timeouts far outweighing insufficient funds and declines as the main driver of lost conversions on UPI."}, {"campaign_id": "Gi9m1XG5nJxMOsar7EaG", "summary": "Volume here is too low to draw a real conclusion, though the resolved transactions skew toward timeouts and cancellations similar to the main campaign."}, {"campaign_id": "n8SrX6C4aZBy7Jmqi5gb", "summary": "With only a single resolved transaction, this unlabeled campaign's volume is far too low to say anything meaningful about its performance."}]}]}
+2026-10-10 20:39:18,214 INFO Claude request for cp_id=122:
+--- system ---
+You are a performance analyst for DTPay, a payment integration platform, writing an analysis that will be shown directly to content-service partners (e.g. KidsFlix, Learn2bFit) about how their service performed.
+
+DTPay routes different products through different payment providers (e.g. pawapay for African mobile money, razorpay for Indian UPI/card/bank payments), given to you as `provider`. What "operator" means in the data depends on it: for a mobile-money provider it's the actual telecom network (MTN, Airtel, ...); for a card/UPI provider it's the payment channel or method instead (upi, card, ...), not a network. Use whichever framing actually fits the given provider rather than assuming it's always a mobile network.
+
+For each service you're given, write:
+- summary: two to four sentences on what's actually happening, grounded in the failure/rejection reasons and operator data - not generic commentary. Refer to the service by its product_name and the country by its full name (both given to you) rather than an ID or abbreviation. Since there's no previous period to compare against here, the daily breakdown (and the hourly one, when given) should be a real part of the summary, not just a source for a rare standout - describe the actual shape of the period (fairly steady throughout, weaker at certain times of day, one day or hour pulling the average down or up) in addition to the reason/operator picture, even when nothing rises to the bar for notable_days/notable_hours specifically.
+- recommendations: 1-3 specific, actionable items tied to the actual data (a specific failure reason, a specific underperforming network or channel), not generic advice like "improve your conversion rate."
+- notable_days: you're also given `daily`, a day-by-day breakdown given as a compact table: the first line names the columns (date, total_resolved, completed, conversion_rate_pct), and each line after that is one day's values in that same order, comma-separated - the same numbers a list of objects would give you, just not repeating the column names on every line. Only include a date here if your summary text explicitly names and discusses that day by weekday - never flag a day here that the summary doesn't actually talk about, since the report highlights these days visually and the reader will expect the text right below to explain why. Use this sparingly: only for a day that's a genuinely clear standout (a real dip or spike), not just modestly above or below the period's average. A day with much lower volume than the others can look artificially swingy in its rate; weigh that before calling it notable at all.
+- notable_hours: you're also given `hourly`, an hour-by-hour breakdown covering the same period as `daily`, in the same compact table format (columns: hour, total_resolved, completed, conversion_rate_pct), when the requested range is short enough for it to be included at all - "(none)" if it wasn't. If a specific hour (or a recurring time of day across multiple days) clearly stands out - a burst of volume, a spike or crash in conversion - name it in your summary and list its exact timestamp (the "hour" column's value) here, same bar as notable_days: a genuinely clear standout, only ever an hour you actually discuss, and weigh low volume before calling one out. If `hourly` is "(none)", leave this empty too.
+
+Rules:
+- Never restate specific conversion percentages, counts, or figures in your text - those are shown to the partner separately, right next to your summary. This applies to daily and hourly figures too, not just the headline ones. Referring to categories ("insufficient balance", "one of the networks") or directional language ("improved", "worsened", "roughly doubled") is fine; restating "3.28%" or "1,401 of 42,684" is not.
+- Do not frame operator- or customer-side issues (insufficient balance, OTP timeout, an operator's own eligibility rules, "no active deposit flow") as the partner's fault - describe those as market/network conditions outside the partner's control, not something for them to fix on their end.
+- If total_resolved is under about 30, say plainly that the volume is too low to draw a real conclusion from, rather than treating a single-digit sample as a meaningful rate.
+
+--- user message ---
+{
+  "services": [
+    {
+      "product_id": 5345,
+      "product_name": "Learn2bFit150",
+      "country": "India",
+      "provider": "razorpay",
+      "total_resolved": 10718,
+      "completed": 1001,
+      "failed": 9717,
+      "conversion_rate_pct": 9.34,
+      "top_reasons": [
+        {
+          "reason": "request_timed_out",
+          "occurrences": 1750
+        },
+        {
+          "reason": "insufficient_funds",
+          "occurrences": 255
+        },
+        {
+          "reason": "payment_declined",
+          "occurrences": 76
+        },
+        {
+          "reason": "payment_cancelled",
+          "occurrences": 6
+        },
+        {
+          "reason": "debit_instrument_blocked",
+          "occurrences": 5
+        }
+      ],
+      "operators": [
+        {
+          "operator": "upi",
+          "attempts": 3100,
+          "ok": 999
+        },
+        {
+          "operator": "emandate",
+          "attempts": 5,
+          "ok": 0
+        },
+        {
+          "operator": "card",
+          "attempts": 1,
+          "ok": 1
+        }
+      ],
+      "daily": "date,total_resolved,completed,conversion_rate_pct\n2026-10-03,1698,200,11.78\n2026-10-04,1764,174,9.86\n2026-10-05,4715,322,6.83\n2026-10-06,496,49,9.88\n2026-10-07,125,19,15.2\n2026-10-08,1446,178,12.31\n2026-10-09,474,59,12.45",
+      "hourly": "hour,total_resolved,completed,conversion_rate_pct\n2026-10-03T00:00:00,1,0,0.0\n2026-10-03T01:00:00,0,0,0.0\n2026-10-03T02:00:00,0,0,0.0\n2026-10-03T03:00:00,1,0,0.0\n2026-10-03T04:00:00,2,0,0.0\n2026-10-03T05:00:00,9,3,33.33\n2026-10-03T06:00:00,7,1,14.29\n2026-10-03T07:00:00,27,1,3.7\n2026-10-03T08:00:00,14,9,64.29\n2026-10-03T09:00:00,45,2,4.44\n2026-10-03T10:00:00,122,17,13.93\n2026-10-03T11:00:00,233,22,9.44\n2026-10-03T12:00:00,218,29,13.3\n2026-10-03T13:00:00,189,20,10.58\n2026-10-03T14:00:00,165,32,19.39\n2026-10-03T15:00:00,114,7,6.14\n2026-10-03T16:00:00,98,7,7.14\n2026-10-03T17:00:00,130,9,6.92\n2026-10-03T18:00:00,201,28,13.93\n2026-10-03T19:00:00,121,13,10.74\n2026-10-03T20:00:00,1,0,0.0\n2026-10-03T21:00:00,0,0,0.0\n2026-10-03T22:00:00,0,0,0.0\n2026-10-03T23:00:00,0,0,0.0\n2026-10-04T00:00:00,37,2,5.41\n2026-10-04T01:00:00,5,2,40.0\n2026-10-04T02:00:00,4,0,0.0\n2026-10-04T03:00:00,10,1,10.0\n2026-10-04T04:00:00,18,4,22.22\n2026-10-04T05:00:00,30,1,3.33\n2026-10-04T06:00:00,28,5,17.86\n2026-10-04T07:00:00,34,9,26.47\n2026-10-04T08:00:00,35,3,8.57\n2026-10-04T09:00:00,52,5,9.62\n2026-10-04T10:00:00,123,10,8.13\n2026-10-04T11:00:00,148,10,6.76\n2026-10-04T12:00:00,135,19,14.07\n2026-10-04T13:00:00,122,12,9.84\n2026-10-04T14:00:00,131,9,6.87\n2026-10-04T15:00:00,125,10,8.0\n2026-10-04T16:00:00,101,12,11.88\n2026-10-04T17:00:00,124,12,9.68\n2026-10-04T18:00:00,138,10,7.25\n2026-10-04T19:00:00,282,29,10.28\n2026-10-04T20:00:00,57,5,8.77\n2026-10-04T21:00:00,16,2,12.5\n2026-10-04T22:00:00,9,2,22.22\n2026-10-04T23:00:00,0,0,0.0\n2026-10-05T00:00:00,27,2,7.41\n2026-10-05T01:00:00,21,1,4.76\n2026-10-05T02:00:00,20,2,10.0\n2026-10-05T03:00:00,24,1,4.17\n2026-10-05T04:00:00,35,2,5.71\n2026-10-05T05:00:00,58,5,8.62\n2026-10-05T06:00:00,60,1,1.67\n2026-10-05T07:00:00,60,4,6.67\n2026-10-05T08:00:00,89,5,5.62\n2026-10-05T09:00:00,111,15,13.51\n2026-10-05T10:00:00,153,12,7.84\n2026-10-05T11:00:00,130,12,9.23\n2026-10-05T12:00:00,98,6,6.12\n2026-10-05T13:00:00,132,10,7.58\n2026-10-05T14:00:00,146,7,4.79\n2026-10-05T15:00:00,110,9,8.18\n2026-10-05T16:00:00,94,9,9.57\n2026-10-05T17:00:00,126,4,3.17\n2026-10-05T18:00:00,137,9,6.57\n2026-10-05T19:00:00,217,17,7.83\n2026-10-05T20:00:00,1427,92,6.45\n2026-10-05T21:00:00,1278,89,6.96\n2026-10-05T22:00:00,160,8,5.0\n2026-10-05T23:00:00,2,0,0.0\n2026-10-06T00:00:00,39,5,12.82\n2026-10-06T01:00:00,7,1,14.29\n2026-10-06T02:00:00,4,0,0.0\n2026-10-06T03:00:00,10,1,10.0\n2026-10-06T04:00:00,12,0,0.0\n2026-10-06T05:00:00,24,1,4.17\n2026-10-06T06:00:00,17,4,23.53\n2026-10-06T07:00:00,27,3,11.11\n2026-10-06T08:00:00,19,4,21.05\n2026-10-06T09:00:00,15,2,13.33\n2026-10-06T10:00:00,29,1,3.45\n2026-10-06T11:00:00,23,3,13.04\n2026-10-06T12:00:00,14,2,14.29\n2026-10-06T13:00:00,23,2,8.7\n2026-10-06T14:00:00,9,1,11.11\n2026-10-06T15:00:00,13,1,7.69\n2026-10-06T16:00:00,5,0,0.0\n2026-10-06T17:00:00,7,2,28.57\n2026-10-06T18:00:00,17,1,5.88\n2026-10-06T19:00:00,20,4,20.0\n2026-10-06T20:00:00,37,1,2.7\n2026-10-06T21:00:00,63,3,4.76\n2026-10-06T22:00:00,51,6,11.76\n2026-10-06T23:00:00,11,1,9.09\n2026-10-07T00:00:00,8,0,0.0\n2026-10-07T01:00:00,3,0,0.0\n2026-10-07T02:00:00,1,0,0.0\n2026-10-07T03:00:00,2,0,0.0\n2026-10-07T04:00:00,2,0,0.0\n2026-10-07T05:00:00,5,0,0.0\n2026-10-07T06:00:00,4,1,25.0\n2026-10-07T07:00:00,3,1,33.33\n2026-10-07T08:00:00,7,0,0.0\n2026-10-07T09:00:00,16,2,12.5\n2026-10-07T10:00:00,5,3,60.0\n2026-10-07T11:00:00,0,0,0.0\n2026-10-07T12:00:00,7,3,42.86\n2026-10-07T13:00:00,3,0,0.0\n2026-10-07T14:00:00,3,1,33.33\n2026-10-07T15:00:00,0,0,0.0\n2026-10-07T16:00:00,2,0,0.0\n2026-10-07T17:00:00,3,0,0.0\n2026-10-07T18:00:00,1,1,100.0\n2026-10-07T19:00:00,9,0,0.0\n2026-10-07T20:00:00,11,3,27.27\n2026-10-07T21:00:00,15,1,6.67\n2026-10-07T22:00:00,12,2,16.67\n2026-10-07T23:00:00,3,1,33.33\n2026-10-08T00:00:00,1,1,100.0\n2026-10-08T01:00:00,0,0,0.0\n2026-10-08T02:00:00,0,0,0.0\n2026-10-08T03:00:00,2,0,0.0\n2026-10-08T04:00:00,2,1,50.0\n2026-10-08T05:00:00,7,0,0.0\n2026-10-08T06:00:00,6,2,33.33\n2026-10-08T07:00:00,4,1,25.0\n2026-10-08T08:00:00,17,2,11.76\n2026-10-08T09:00:00,16,3,18.75\n2026-10-08T10:00:00,30,4,13.33\n2026-10-08T11:00:00,28,3,10.71\n2026-10-08T12:00:00,30,4,13.33\n2026-10-08T13:00:00,54,7,12.96\n2026-10-08T14:00:00,56,5,8.93\n2026-10-08T15:00:00,45,7,15.56\n2026-10-08T16:00:00,47,6,12.77\n2026-10-08T17:00:00,70,7,10.0\n2026-10-08T18:00:00,158,20,12.66\n2026-10-08T19:00:00,120,14,11.67\n2026-10-08T20:00:00,173,20,11.56\n2026-10-08T21:00:00,376,47,12.5\n2026-10-08T22:00:00,180,21,11.67\n2026-10-08T23:00:00,24,3,12.5\n2026-10-09T00:00:00,2,0,0.0\n2026-10-09T01:00:00,2,0,0.0\n2026-10-09T02:00:00,4,0,0.0\n2026-10-09T03:00:00,2,0,0.0\n2026-10-09T04:00:00,3,1,33.33\n2026-10-09T05:00:00,6,0,0.0\n2026-10-09T06:00:00,8,2,25.0\n2026-10-09T07:00:00,6,0,0.0\n2026-10-09T08:00:00,8,1,12.5\n2026-10-09T09:00:00,3,1,33.33\n2026-10-09T10:00:00,21,2,9.52\n2026-10-09T11:00:00,7,1,14.29\n2026-10-09T12:00:00,13,1,7.69\n2026-10-09T13:00:00,9,3,33.33\n2026-10-09T14:00:00,9,0,0.0\n2026-10-09T15:00:00,8,2,25.0\n2026-10-09T16:00:00,6,1,16.67\n2026-10-09T17:00:00,28,5,17.86\n2026-10-09T18:00:00,48,3,6.25\n2026-10-09T19:00:00,63,6,9.52\n2026-10-09T20:00:00,60,6,10.0\n2026-10-09T21:00:00,90,10,11.11\n2026-10-09T22:00:00,55,11,20.0\n2026-10-09T23:00:00,13,3,23.08",
+      "campaign_id": "mFTuVimSMRzg2UjGI5u7",
+      "campaign_name": "Razorpay Learn2BFit  Monthly(150)"
+    }
+  ]
+}
+2026-10-10 20:39:26,500 INFO Claude response for cp_id=122:
+{"services": [{"product_id": 5345, "summary": "Learn2bFit150's transactions in India are overwhelmingly routed through UPI, which carries nearly all volume but converts at a low rate, dragging the overall picture down. The dominant failure reason by far is request timing out, well ahead of insufficient funds and outright payment declines, pointing to UPI collect requests going unacknowledged rather than users actively rejecting payments. Across the week performance is fairly choppy day to day, with Sunday standing out as a clear low point even though it carried by far the heaviest volume of the period, while the lighter-volume Wednesday posted the strongest conversion. Within days, the pattern is also uneven by hour: late evening hours tend to carry the bulk of attempts, and on Sunday the two hours spanning 8pm-10pm saw a huge surge in volume that converted poorly, pulling that whole day down.", "recommendations": ["Investigate UPI collect-request timeouts specifically around the high-volume evening window (8-10pm), since that's where most failed volume is concentrated.", "Consider shortening the UPI payment request expiry or adding a retry/reminder nudge before timeout, since timeouts outnumber every other failure reason combined.", "Treat emandate as effectively non-functional for this flow given its near-total failure rate on the small sample it got, and review whether it should be offered as a payment option at all."], "notable_days": ["2026-10-05"], "notable_hours": ["2026-10-05T20:00:00", "2026-10-05T21:00:00"]}]}

@@ -2,7 +2,8 @@
 On-demand performance summary API, plus the follow-up chat.
 
 POST /summary - JWT in the Authorization header, (uid, start_date,
-end_date, optionally cp_product_id) in the body - returns a JSON
+end_date, optionally cp_product_id, optionally campaign_id - only
+together with cp_product_id) in the body - returns a JSON
 summary covering whichever products the requesting uid is allowed to
 see. Now checks summary_cache first (see that module for the key
 design and why session_id is never part of what's cached) - on a hit,
@@ -25,11 +26,11 @@ from uuid import uuid4
 
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 from auth import authenticate, get_role, resolve_cp_product_ids, AuthError
 from config import MAX_DATE_RANGE_DAYS, MAX_QUESTIONS_PER_SESSION, ALLOWED_ORIGINS
-from extract import fetch_all
+from extract import fetch_all, get_campaign_name, fetch_campaign_breakdown
 from providers import PROVIDER_RULES
 from rollup import rollup_by_partner
 from analyze import analyze_partner
@@ -63,6 +64,18 @@ class SummaryRequest(BaseModel):
     start_date: date
     end_date: date
     cp_product_id: Optional[int] = None
+    campaign_id: Optional[str] = Field(None, max_length=100)
+
+    @field_validator("campaign_id", mode="before")
+    @classmethod
+    def _campaign_id_as_str(cls, value):
+        # campaign_id is a varchar in both tables - accept 123 or "123"
+        # from the client, and treat "" the same as omitted.
+        if isinstance(value, int) and not isinstance(value, bool):
+            return str(value)
+        if isinstance(value, str):
+            return value.strip() or None
+        return value
 
 
 class ChatRequest(BaseModel):
@@ -93,6 +106,17 @@ def create_summary(request: SummaryRequest, authorization: str = Header(...)):
     except AuthError as exc:
         raise HTTPException(status_code=exc.status_code, detail=exc.message)
 
+    campaign = None
+    if request.campaign_id is not None:
+        if request.cp_product_id is None:
+            raise HTTPException(status_code=400, detail="campaign_id requires cp_product_id.")
+        # Only looked up after resolve_cp_product_ids() above has already
+        # confirmed this uid may see cp_product_id.
+        campaign_name = get_campaign_name(request.cp_product_id, request.campaign_id)
+        if campaign_name is None:
+            raise HTTPException(status_code=404, detail="That campaign was not found for this product.")
+        campaign = {"campaign_id": request.campaign_id, "campaign_name": campaign_name}
+
     range_days = (request.end_date - request.start_date).days + 1
     if range_days > MAX_DATE_RANGE_DAYS:
         raise HTTPException(
@@ -103,16 +127,18 @@ def create_summary(request: SummaryRequest, authorization: str = Header(...)):
     # Cache check happens AFTER auth/ownership resolve above, never
     # before - a cache hit must never bypass the authorization check
     # that decided cp_product_ids in the first place.
-    cache_key = summary_cache.build_key(request.start_date, request.end_date, request.cp_product_id, request.uid)
+    cache_key = summary_cache.build_key(request.start_date, request.end_date, request.cp_product_id, request.uid,
+                                        request.campaign_id)
     cached = summary_cache.get(cache_key)
     if cached is not None:
         session_id = str(uuid4())
         create_session(
             session_id=session_id, uid=request.uid, start_date=request.start_date,
             end_date=request.end_date, cp_product_id=request.cp_product_id,
-            context_data={"date_range": cached["date_range"], "overall": cached["overall"], "products": cached["products"]},
+            context_data={"date_range": cached["date_range"], "campaign": cached.get("campaign"),
+                          "overall": cached["overall"], "products": cached["products"]},
         )
-        return sanitize_aggregator_names({"session_id": session_id, **cached})
+        return sanitize_aggregator_names({"session_id": session_id, "campaign": None, **cached})
 
     day_start = datetime.combine(request.start_date, datetime.min.time())
     day_end = datetime.combine(request.end_date, datetime.min.time()) + timedelta(days=1)
@@ -125,7 +151,18 @@ def create_summary(request: SummaryRequest, authorization: str = Header(...)):
         include_daily=True,
         include_hourly=include_hourly,
         include_daily_reasons=True,
+        campaign_id=request.campaign_id,
     )
+
+    # Whole-product request: also split each product by campaign, for
+    # products running more than one. A campaign request is already one
+    # campaign, so there is nothing to split.
+    campaigns_by_product = {}
+    if campaign is None:
+        campaigns_by_product = fetch_campaign_breakdown(
+            day_start, day_end, cp_product_ids,
+            {m["product_id"]: m["provider"] for m in product_metrics},
+        )
 
     digests = rollup_by_partner(
         product_metrics, reason_breakdown, operator_breakdown,
@@ -137,6 +174,10 @@ def create_summary(request: SummaryRequest, authorization: str = Header(...)):
     session_id = str(uuid4())
 
     for digest in digests:
+        for service in digest["services"]:
+            if campaign is not None:
+                service.update(campaign)
+            service["campaigns"] = campaigns_by_product.get(service["product_id"], [])
         analyze_partner(digest)
         log_message(
             source="dashboard_summary", role="assistant", session_id=session_id,
@@ -186,6 +227,20 @@ def create_summary(request: SummaryRequest, authorization: str = Header(...)):
                 ] if include_hourly else None,
             }
             product[comparison_label + "s"] = _comparison_entries(service.get("operators", []), comparison_label)
+            product["campaign_overview"] = service.get("campaign_overview", "")
+            product["campaigns"] = [
+                {
+                    "campaign_id": c["campaign_id"],
+                    "campaign_name": c["campaign_name"],
+                    "total_resolved": c["total_resolved"],
+                    "completed": c["completed"],
+                    "conversion_rate_pct": c["conversion_rate_pct"],
+                    "summary": c.get("summary", ""),
+                    "reasons": [{"reason": r["reason_code"], "occurrences": r["occurrences"]} for r in c["reasons"]],
+                    comparison_label + "s": _comparison_entries(c["operators"], comparison_label),
+                }
+                for c in service.get("campaigns", [])
+            ]
             products.append(product)
     products.sort(key=lambda p: (p["cp_id"], p["product_id"]))
 
@@ -193,6 +248,7 @@ def create_summary(request: SummaryRequest, authorization: str = Header(...)):
 
     result_data = {
         "date_range": {"start": request.start_date.isoformat(), "end": request.end_date.isoformat()},
+        "campaign": campaign,
         "overall": {
             "total_resolved": total_resolved,
             "completed": total_completed,
@@ -205,7 +261,8 @@ def create_summary(request: SummaryRequest, authorization: str = Header(...)):
     ttl = summary_cache.determine_ttl(request.start_date, request.end_date, date.today())
     summary_cache.set(cache_key, result_data, ttl)
 
-    context_data = {"date_range": result_data["date_range"], "overall": result_data["overall"], "products": products}
+    context_data = {"date_range": result_data["date_range"], "campaign": campaign,
+                    "overall": result_data["overall"], "products": products}
     create_session(
         session_id=session_id, uid=request.uid, start_date=request.start_date,
         end_date=request.end_date, cp_product_id=request.cp_product_id, context_data=context_data,

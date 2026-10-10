@@ -31,6 +31,8 @@ from providers import (
     filter_payout_reason_rows,
     merge_duplicate_reasons,
     classify_operator_counts,
+    classify_campaign_counts,
+    classify_payout_campaign_counts,
 )
 
 
@@ -66,6 +68,32 @@ def get_weekly_eligible_cp_product_ids():
             return tuple(row["cp_product_id"] for row in cur.fetchall())
 
 
+# campaign_id is indexed in both tables, and one campaign_id maps to
+# exactly one campaign_name, so the first non-null name found is the name.
+# payout_logs first, payment_transactions as a fallback for a campaign
+# whose rows only ever reached checkout.
+CAMPAIGN_NAME_SQL = """
+    SELECT campaign_name FROM {table}
+    WHERE campaign_id = %(campaign_id)s AND cp_product_id = %(cp_product_id)s
+      AND campaign_name IS NOT NULL AND campaign_name <> ''
+    LIMIT 1
+"""
+
+
+def get_campaign_name(cp_product_id, campaign_id):
+    """Returns the campaign's name, or None if this campaign_id has no
+    rows for this cp_product_id in either table."""
+    params = {"cp_product_id": cp_product_id, "campaign_id": campaign_id}
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            for table in ("payout_logs", "payment_transactions"):
+                cur.execute(CAMPAIGN_NAME_SQL.format(table=table), params)
+                row = cur.fetchone()
+                if row is not None:
+                    return row["campaign_name"]
+    return None
+
+
 # ============================================================
 # LEGACY path - payment_transactions-based (razorpay uses this)
 # ============================================================
@@ -81,6 +109,7 @@ STATUS_COUNTS_SQL = """
     JOIN dtpay_users u         ON u.id   = cpp.cp_id
     WHERE t.cp_product_id IN %(cp_product_ids)s
       AND t.date_time >= %(day_start)s AND t.date_time < %(day_end)s
+      AND (%(campaign_id)s IS NULL OR t.campaign_id = %(campaign_id)s)
     GROUP BY t.product_id, t.product_name, t.country_name, t.agg_name,
              t.transaction_status, cpp.id, u.id, u.email, u.company_name
 """
@@ -89,6 +118,7 @@ DAILY_STATUS_COUNTS_SQL = """
     SELECT product_id, DATE(date_time) AS day, agg_name AS provider, transaction_status, COUNT(*) AS count
     FROM payment_transactions
     WHERE cp_product_id IN %(cp_product_ids)s AND date_time >= %(day_start)s AND date_time < %(day_end)s
+      AND (%(campaign_id)s IS NULL OR campaign_id = %(campaign_id)s)
     GROUP BY product_id, DATE(date_time), agg_name, transaction_status
 """
 
@@ -97,6 +127,7 @@ HOURLY_STATUS_COUNTS_SQL = """
            agg_name AS provider, transaction_status, COUNT(*) AS count
     FROM payment_transactions
     WHERE cp_product_id IN %(cp_product_ids)s AND date_time >= %(day_start)s AND date_time < %(day_end)s
+      AND (%(campaign_id)s IS NULL OR campaign_id = %(campaign_id)s)
     GROUP BY product_id, hour, agg_name, transaction_status
 """
 
@@ -111,6 +142,7 @@ REASON_COUNTS_SQL = """
         COUNT(*) AS count
     FROM payment_transactions
     WHERE cp_product_id IN %(cp_product_ids)s AND date_time >= %(day_start)s AND date_time < %(day_end)s
+      AND (%(campaign_id)s IS NULL OR campaign_id = %(campaign_id)s)
     GROUP BY product_id, agg_name, transaction_status, reason_code
 """
 
@@ -125,6 +157,7 @@ DAILY_REASON_COUNTS_SQL = """
         COUNT(*) AS count
     FROM payment_transactions
     WHERE cp_product_id IN %(cp_product_ids)s AND date_time >= %(day_start)s AND date_time < %(day_end)s
+      AND (%(campaign_id)s IS NULL OR campaign_id = %(campaign_id)s)
     GROUP BY product_id, DATE(date_time), agg_name, transaction_status, reason_code
 """
 
@@ -133,6 +166,7 @@ OPERATOR_COUNTS_SQL = """
     FROM payout_logs
     WHERE cp_product_id IN %(cp_product_ids)s AND date_time >= %(day_start)s AND date_time < %(day_end)s
       AND request_type IN ('newpurchase', 'repurchase')
+      AND (%(campaign_id)s IS NULL OR campaign_id = %(campaign_id)s)
     GROUP BY product_id, operator, channel, status
 """
 
@@ -141,6 +175,7 @@ DAILY_OPERATOR_COUNTS_SQL = """
     FROM payout_logs
     WHERE cp_product_id IN %(cp_product_ids)s AND date_time >= %(day_start)s AND date_time < %(day_end)s
       AND request_type IN ('newpurchase', 'repurchase')
+      AND (%(campaign_id)s IS NULL OR campaign_id = %(campaign_id)s)
     GROUP BY product_id, DATE(date_time), operator, channel, status
 """
 
@@ -173,6 +208,7 @@ PAYOUT_STATUS_COUNTS_SQL = """
     WHERE pl.cp_product_id IN %(cp_product_ids)s
       AND pl.date_time >= %(day_start)s AND pl.date_time < %(day_end)s
       AND pl.request_type IN ('newpurchase', 'repurchase')
+      AND (%(campaign_id)s IS NULL OR pl.campaign_id = %(campaign_id)s)
     GROUP BY pl.product_id, pl.product_name, pl.country, pl.agg_name, pl.status,
              cpp.id, u.id, u.email, u.company_name
 """
@@ -182,6 +218,7 @@ PAYOUT_DAILY_STATUS_COUNTS_SQL = """
     FROM payout_logs
     WHERE cp_product_id IN %(cp_product_ids)s AND date_time >= %(day_start)s AND date_time < %(day_end)s
       AND request_type IN ('newpurchase', 'repurchase')
+      AND (%(campaign_id)s IS NULL OR campaign_id = %(campaign_id)s)
     GROUP BY product_id, DATE(date_time), agg_name, status
 """
 
@@ -191,6 +228,7 @@ PAYOUT_HOURLY_STATUS_COUNTS_SQL = """
     FROM payout_logs
     WHERE cp_product_id IN %(cp_product_ids)s AND date_time >= %(day_start)s AND date_time < %(day_end)s
       AND request_type IN ('newpurchase', 'repurchase')
+      AND (%(campaign_id)s IS NULL OR campaign_id = %(campaign_id)s)
     GROUP BY product_id, hour, agg_name, status
 """
 
@@ -203,6 +241,7 @@ PAYOUT_REASON_COUNTS_SQL = """
     FROM payout_logs
     WHERE cp_product_id IN %(cp_product_ids)s AND date_time >= %(day_start)s AND date_time < %(day_end)s
       AND request_type IN ('newpurchase', 'repurchase')
+      AND (%(campaign_id)s IS NULL OR campaign_id = %(campaign_id)s)
     GROUP BY product_id, agg_name, status, error_message
 """
 
@@ -213,13 +252,18 @@ PAYOUT_DAILY_REASON_COUNTS_SQL = """
     FROM payout_logs
     WHERE cp_product_id IN %(cp_product_ids)s AND date_time >= %(day_start)s AND date_time < %(day_end)s
       AND request_type IN ('newpurchase', 'repurchase')
+      AND (%(campaign_id)s IS NULL OR campaign_id = %(campaign_id)s)
     GROUP BY product_id, DATE(date_time), agg_name, status, error_message
 """
 
 
 def fetch_all(day_start, day_end, cp_product_ids, min_resolved=None, include_daily=False,
-              include_hourly=False, include_daily_reasons=False):
+              include_hourly=False, include_daily_reasons=False, campaign_id=None):
     """
+    campaign_id (optional) narrows every query - both paths - to that
+    one campaign's rows. None means no campaign filter at all, which is
+    what the weekly email always passes.
+
     Runs both the legacy (payment_transactions) and new (payout_logs)
     extraction paths for every given cp_product_id, then for each
     product keeps only the result from whichever path its provider
@@ -233,7 +277,8 @@ def fetch_all(day_start, day_end, cp_product_ids, min_resolved=None, include_dai
     if not cp_product_ids:
         return [], [], [], [], [], [], []
 
-    params = {"day_start": day_start, "day_end": day_end, "cp_product_ids": tuple(cp_product_ids)}
+    params = {"day_start": day_start, "day_end": day_end, "cp_product_ids": tuple(cp_product_ids),
+              "campaign_id": campaign_id}
 
     with get_connection() as conn:
         with conn.cursor() as cur:
@@ -357,3 +402,162 @@ def fetch_all(day_start, day_end, cp_product_ids, min_resolved=None, include_dai
 
     return (product_metrics, reason_breakdown, operator_breakdown, daily_metrics,
             hourly_metrics, daily_reason_breakdown, daily_operator_breakdown)
+
+
+# ============================================================
+# Per-campaign breakdown (on-demand API only, whole-product requests)
+# ============================================================
+#
+# Same filters as the product-level queries above, one more GROUP BY
+# level. An empty campaign_id is folded into NULL so "no campaign" is a
+# single bucket. campaign_name is MAX()'d only to carry it through the
+# GROUP BY - one campaign_id maps to exactly one name.
+
+CAMPAIGN_STATUS_COUNTS_SQL = """
+    SELECT product_id, NULLIF(campaign_id, '') AS campaign_id, MAX(campaign_name) AS campaign_name,
+           agg_name AS provider, transaction_status, COUNT(*) AS count
+    FROM payment_transactions
+    WHERE cp_product_id IN %(cp_product_ids)s AND date_time >= %(day_start)s AND date_time < %(day_end)s
+    GROUP BY product_id, NULLIF(campaign_id, ''), agg_name, transaction_status
+"""
+
+CAMPAIGN_REASON_COUNTS_SQL = """
+    SELECT product_id, NULLIF(campaign_id, '') AS campaign_id, agg_name AS provider, transaction_status,
+        CASE
+            WHEN cb_error_message LIKE '%%#%%' THEN SUBSTRING_INDEX(cb_error_message, '#', 1)
+            WHEN partner_error_message IS NULL OR partner_error_message LIKE 'Request completed successfully%%'
+                THEN COALESCE(transaction_status, 'UNKNOWN')
+            ELSE partner_error_message
+        END AS reason_code,
+        COUNT(*) AS count
+    FROM payment_transactions
+    WHERE cp_product_id IN %(cp_product_ids)s AND date_time >= %(day_start)s AND date_time < %(day_end)s
+    GROUP BY product_id, NULLIF(campaign_id, ''), agg_name, transaction_status, reason_code
+"""
+
+PAYOUT_CAMPAIGN_STATUS_COUNTS_SQL = """
+    SELECT product_id, NULLIF(campaign_id, '') AS campaign_id, MAX(campaign_name) AS campaign_name,
+           agg_name AS provider, status, COUNT(*) AS count
+    FROM payout_logs
+    WHERE cp_product_id IN %(cp_product_ids)s AND date_time >= %(day_start)s AND date_time < %(day_end)s
+      AND request_type IN ('newpurchase', 'repurchase')
+    GROUP BY product_id, NULLIF(campaign_id, ''), agg_name, status
+"""
+
+PAYOUT_CAMPAIGN_REASON_COUNTS_SQL = """
+    SELECT product_id, NULLIF(campaign_id, '') AS campaign_id, agg_name AS provider, status,
+        CASE WHEN error_message = 'Success' THEN status ELSE error_message END AS reason_code,
+        COUNT(*) AS count
+    FROM payout_logs
+    WHERE cp_product_id IN %(cp_product_ids)s AND date_time >= %(day_start)s AND date_time < %(day_end)s
+      AND request_type IN ('newpurchase', 'repurchase')
+    GROUP BY product_id, NULLIF(campaign_id, ''), agg_name, status, error_message
+"""
+
+CAMPAIGN_OPERATOR_COUNTS_SQL = """
+    SELECT product_id, NULLIF(campaign_id, '') AS campaign_id, operator, channel, status, COUNT(*) AS count
+    FROM payout_logs
+    WHERE cp_product_id IN %(cp_product_ids)s AND date_time >= %(day_start)s AND date_time < %(day_end)s
+      AND request_type IN ('newpurchase', 'repurchase')
+    GROUP BY product_id, NULLIF(campaign_id, ''), operator, channel, status
+"""
+
+CAMPAIGN_TOP_REASONS = 5
+
+
+def fetch_campaign_breakdown(day_start, day_end, cp_product_ids, provider_by_product):
+    """
+    Splits each product's numbers by campaign. provider_by_product
+    ({product_id: provider}, from fetch_all's product_metrics) picks the
+    path per product exactly the way fetch_all does, and limits the
+    breakdown to products fetch_all actually kept.
+
+    Returns {product_id: [campaign, ...]}, sorted by total_resolved
+    descending, only for products with at least two campaigns that have
+    resolved volume - a single campaign is just the product itself.
+    Each campaign: campaign_id (None = no campaign), campaign_name,
+    total_resolved, completed, failed, conversion_rate_pct, reasons,
+    operators.
+
+    The reason/operator classifiers in providers.py key on product_id,
+    so rows are passed through with product_id packed as
+    (product_id, campaign_id) and unpacked afterwards - that keeps every
+    success/exclusion rule in providers.py rather than re-implementing
+    it per campaign.
+    """
+    if not cp_product_ids or not provider_by_product:
+        return {}
+
+    def _is_payout_product(pid):
+        return uses_payout_logs_metrics(provider_by_product.get(pid))
+
+    any_legacy = any(not _is_payout_product(pid) for pid in provider_by_product)
+    any_payout = any(_is_payout_product(pid) for pid in provider_by_product)
+    params = {"day_start": day_start, "day_end": day_end, "cp_product_ids": tuple(cp_product_ids)}
+
+    status_rows, reason_rows, payout_status_rows, payout_reason_rows = [], [], [], []
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            if any_legacy:
+                cur.execute(CAMPAIGN_STATUS_COUNTS_SQL, params)
+                status_rows = _clean_rows(cur.fetchall())
+                cur.execute(CAMPAIGN_REASON_COUNTS_SQL, params)
+                reason_rows = _clean_rows(cur.fetchall())
+            if any_payout:
+                cur.execute(PAYOUT_CAMPAIGN_STATUS_COUNTS_SQL, params)
+                payout_status_rows = _clean_rows(cur.fetchall())
+                cur.execute(PAYOUT_CAMPAIGN_REASON_COUNTS_SQL, params)
+                payout_reason_rows = _clean_rows(cur.fetchall())
+            cur.execute(CAMPAIGN_OPERATOR_COUNTS_SQL, params)
+            operator_rows = _clean_rows(cur.fetchall())
+
+    def _keep(rows, payout):
+        return [r for r in rows
+                if r["product_id"] in provider_by_product and _is_payout_product(r["product_id"]) == payout]
+
+    def _packed(rows):
+        return [{**r, "product_id": (r["product_id"], r["campaign_id"])} for r in rows]
+
+    status_rows, reason_rows = _keep(status_rows, False), _keep(reason_rows, False)
+    payout_status_rows, payout_reason_rows = _keep(payout_status_rows, True), _keep(payout_reason_rows, True)
+
+    names = {(r["product_id"], r["campaign_id"]): r["campaign_name"]
+             for r in status_rows + payout_status_rows if r["campaign_name"]}
+    metrics = classify_campaign_counts(status_rows) + classify_payout_campaign_counts(payout_status_rows)
+
+    reasons_by_key = {}
+    for r in merge_duplicate_reasons(
+        [{"product_id": r["product_id"], "reason_code": r["reason_code"], "occurrences": r["count"]}
+         for r in filter_reason_rows(_packed(reason_rows)) + filter_payout_reason_rows(_packed(payout_reason_rows))]
+    ):
+        reasons_by_key.setdefault(r["product_id"], []).append(
+            {"reason_code": r["reason_code"], "occurrences": r["occurrences"]})
+
+    packed_operator_rows = _packed([o for o in operator_rows if o["product_id"] in provider_by_product])
+    for row in packed_operator_rows:
+        row["provider"] = provider_by_product[row["product_id"][0]]
+    operators_by_key = {}
+    for o in classify_operator_counts(packed_operator_rows):
+        operators_by_key.setdefault(o["product_id"], []).append(
+            {"operator": o["operator"], "attempts": o["attempts"], "operator_ok": o["operator_ok"]})
+
+    by_product = {}
+    for m in metrics:
+        if m["total_resolved"] <= 0:
+            continue
+        key = (m["product_id"], m["campaign_id"])
+        by_product.setdefault(m["product_id"], []).append({
+            "campaign_id": m["campaign_id"],
+            "campaign_name": names.get(key),
+            "total_resolved": m["total_resolved"],
+            "completed": m["completed"],
+            "failed": m["total_resolved"] - m["completed"],
+            "conversion_rate_pct": m["conversion_rate_pct"],
+            "reasons": sorted(reasons_by_key.get(key, []), key=lambda r: -r["occurrences"])[:CAMPAIGN_TOP_REASONS],
+            "operators": sorted(operators_by_key.get(key, []), key=lambda o: -o["attempts"]),
+        })
+
+    return {
+        pid: sorted(campaigns, key=lambda c: -c["total_resolved"])
+        for pid, campaigns in by_product.items() if len(campaigns) >= 2
+    }

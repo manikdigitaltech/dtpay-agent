@@ -260,6 +260,17 @@ def classify_payout_hourly_counts(rows):
                                 success_key="payout_success_statuses", excluded_key="payout_excluded_statuses")
 
 
+def classify_campaign_counts(rows):
+    """Legacy, payment_transactions-based - per (product_id, campaign_id)."""
+    return _classify_by_period(rows, "campaign_id")
+
+
+def classify_payout_campaign_counts(rows):
+    """New, payout_logs-based - per (product_id, campaign_id)."""
+    return _classify_by_period(rows, "campaign_id", status_field="status",
+                                success_key="payout_success_statuses", excluded_key="payout_excluded_statuses")
+
+
 def filter_reason_rows(rows):
     """
     Legacy path: drops payment_transactions rows whose status is

@@ -54,11 +54,20 @@ def _get_client():
     return _client
 
 
-def build_key(start_date, end_date, cp_product_id, uid):
+# Bump whenever the shape of a cached /summary response changes, so
+# entries written by older code are never served in the new shape.
+# v2: campaign + per-product campaigns/campaign_overview.
+KEY_VERSION = "v2"
+
+
+def build_key(start_date, end_date, cp_product_id, uid, campaign_id=None):
+    base = f"summary:{KEY_VERSION}:{start_date.isoformat()}:{end_date.isoformat()}"
     if cp_product_id is not None:
-        suffix = f"summary:{start_date.isoformat()}:{end_date.isoformat()}:product:{cp_product_id}"
+        suffix = f"{base}:product:{cp_product_id}"
     else:
-        suffix = f"summary:{start_date.isoformat()}:{end_date.isoformat()}:uid:{uid}"
+        suffix = f"{base}:uid:{uid}"
+    if campaign_id is not None:
+        suffix += f":campaign:{campaign_id}"
     return f"{REDIS_KEY_PREFIX}{suffix}"
 
 

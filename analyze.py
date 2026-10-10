@@ -68,7 +68,7 @@ STRUCTURED_OUTPUT_BETA = "structured-outputs-2025-11-13"
 logger = get_agent_logger(__name__)
 
 
-def _build_system_prompt(compare_to_previous):
+def _build_system_prompt(compare_to_previous, has_campaigns=False):
     comparison_summary_note = (
         " When previous-period data is present, make the comparison the point of the summary "
         "(what changed, and - if the reason/operator breakdown suggests why - what likely drove "
@@ -98,6 +98,11 @@ def _build_system_prompt(compare_to_previous):
 
     intro_period_note = " compared to the period before" if compare_to_previous else ""
 
+    # Only present when the on-demand API attached a per-campaign split -
+    # the weekly email never does, so its prompt stays unchanged.
+    campaigns_note = """
+- campaign_overview and campaigns: some services also have `campaigns`, the same service's traffic split by marketing campaign (the service's totals are exactly the sum of its campaigns), each with its own numbers, top_reasons and operators. For those, write campaign_overview: one to two sentences comparing the campaigns against each other - which are converting best and worst relative to the rest, and what in their reasons or operator/channel mix most likely explains the gap. Then, in campaigns, one sentence per campaign (keyed by its campaign_id, exactly as given) on how that campaign is doing and why. Refer to campaigns by campaign_name, never by ID. A campaign with much lower volume than the others can look artificially strong or weak - say so instead of ranking it. For a service with no `campaigns`, return an empty campaign_overview and an empty campaigns list.""" if has_campaigns else ""
+
     return f"""You are a performance analyst for DTPay, a payment integration platform, writing an analysis that will be shown directly to content-service partners (e.g. KidsFlix, Learn2bFit) about how their service performed{intro_period_note}.
 
 DTPay routes different products through different payment providers (e.g. pawapay for African mobile money, razorpay for Indian UPI/card/bank payments), given to you as `provider`. What "operator" means in the data depends on it: for a mobile-money provider it's the actual telecom network (MTN, Airtel, ...); for a card/UPI provider it's the payment channel or method instead (upi, card, ...), not a network. Use whichever framing actually fits the given provider rather than assuming it's always a mobile network.
@@ -106,7 +111,7 @@ For each service you're given, write:
 - summary: {summary_length_note} on what's actually happening, grounded in the failure/rejection reasons and operator data - not generic commentary. Refer to the service by its product_name and the country by its full name (both given to you) rather than an ID or abbreviation.{comparison_summary_note}{temporal_emphasis_note}
 - recommendations: 1-3 specific, actionable items tied to the actual data (a specific failure reason, a specific underperforming network or channel{recommendation_shift_note}), not generic advice like "improve your conversion rate."
 - notable_days: you're also given `daily`, a day-by-day breakdown given as a compact table: the first line names the columns (date, total_resolved, completed, conversion_rate_pct), and each line after that is one day's values in that same order, comma-separated - the same numbers a list of objects would give you, just not repeating the column names on every line. Only include a date here if your summary text explicitly names and discusses that day by weekday - never flag a day here that the summary doesn't actually talk about, since the report highlights these days visually and the reader will expect the text right below to explain why. Use this sparingly: only for a day that's a genuinely clear standout (a real dip or spike), not just modestly above or below the period's average{notable_days_priority_note}. A day with much lower volume than the others can look artificially swingy in its rate; weigh that before calling it notable at all.
-- notable_hours: you're also given `hourly`, an hour-by-hour breakdown covering the same period as `daily`, in the same compact table format (columns: hour, total_resolved, completed, conversion_rate_pct), when the requested range is short enough for it to be included at all - "(none)" if it wasn't. If a specific hour (or a recurring time of day across multiple days) clearly stands out - a burst of volume, a spike or crash in conversion - name it in your summary and list its exact timestamp (the "hour" column's value) here, same bar as notable_days: a genuinely clear standout, only ever an hour you actually discuss, and weigh low volume before calling one out. If `hourly` is "(none)", leave this empty too.
+- notable_hours: you're also given `hourly`, an hour-by-hour breakdown covering the same period as `daily`, in the same compact table format (columns: hour, total_resolved, completed, conversion_rate_pct), when the requested range is short enough for it to be included at all - "(none)" if it wasn't. If a specific hour (or a recurring time of day across multiple days) clearly stands out - a burst of volume, a spike or crash in conversion - name it in your summary and list its exact timestamp (the "hour" column's value) here, same bar as notable_days: a genuinely clear standout, only ever an hour you actually discuss, and weigh low volume before calling one out. If `hourly` is "(none)", leave this empty too.{campaigns_note}
 
 Rules:
 - Never restate specific conversion percentages, counts, or figures in your text - those are shown to the partner separately, right next to your summary. This applies to daily and hourly figures too, not just the headline ones. Referring to categories ("insufficient balance", "one of the networks") or directional language ("improved", "worsened", "roughly doubled") is fine; restating "3.28%" or "1,401 of 42,684" is not.
@@ -148,6 +153,45 @@ OUTPUT_SCHEMA = {
     },
     "required": ["services"],
 }
+
+CAMPAIGN_OUTPUT_PROPERTIES = {
+    "campaign_overview": {"type": "string"},
+    "campaigns": {
+        "type": "array",
+        "items": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "campaign_id": {"type": "string"},
+                "summary": {"type": "string"},
+            },
+            "required": ["campaign_id", "summary"],
+        },
+    },
+}
+
+# Payload-side key for the "no campaign" bucket, whose campaign_id is
+# None in the data - the schema needs every campaign_id to be a string.
+NO_CAMPAIGN_KEY = ""
+
+
+def _output_schema(has_campaigns):
+    """OUTPUT_SCHEMA, plus the per-campaign fields only when some
+    service in this call actually carries a campaign split."""
+    if not has_campaigns:
+        return OUTPUT_SCHEMA
+    item = OUTPUT_SCHEMA["properties"]["services"]["items"]
+    return {
+        **OUTPUT_SCHEMA,
+        "properties": {"services": {
+            "type": "array",
+            "items": {
+                **item,
+                "properties": {**item["properties"], **CAMPAIGN_OUTPUT_PROPERTIES},
+                "required": item["required"] + list(CAMPAIGN_OUTPUT_PROPERTIES),
+            },
+        }},
+    }
 
 
 def _service_payload(service):
@@ -199,6 +243,29 @@ def _service_payload(service):
         ),
     }
 
+    if service.get("campaigns"):
+        payload["campaigns"] = [
+            {
+                "campaign_id": c["campaign_id"] if c["campaign_id"] is not None else NO_CAMPAIGN_KEY,
+                "campaign_name": c["campaign_name"] or (
+                    "(traffic with no campaign)" if c["campaign_id"] is None else "(unnamed campaign)"),
+                "total_resolved": c["total_resolved"],
+                "completed": c["completed"],
+                "conversion_rate_pct": c["conversion_rate_pct"],
+                "top_reasons": [{"reason": r["reason_code"], "occurrences": r["occurrences"]} for r in c["reasons"][:3]],
+                "operators": [{"operator": o["operator"], "attempts": o["attempts"], "ok": o["operator_ok"]}
+                              for o in c["operators"]],
+            }
+            for c in service["campaigns"]
+        ]
+
+    # Set only by the on-demand API when the request named a campaign -
+    # tells Claude every number here is that one campaign, not the
+    # whole product.
+    if service.get("campaign_id") is not None:
+        payload["campaign_id"] = service["campaign_id"]
+        payload["campaign_name"] = service.get("campaign_name")
+
     if service.get("compare_to_previous"):
         payload["previous_total_resolved"] = service.get("previous_total_resolved")
         payload["previous_conversion_rate_pct"] = service.get("previous_conversion_rate_pct")
@@ -229,7 +296,8 @@ def analyze_partner(digest, client=None):
     """
     client = client or anthropic.Anthropic(api_key=ANTHROPIC_API_KEY, timeout=CLAUDE_TIMEOUT_SECONDS)
     compare_to_previous = bool(digest["services"]) and bool(digest["services"][0].get("compare_to_previous"))
-    system_prompt = _build_system_prompt(compare_to_previous)
+    has_campaigns = any(s.get("campaigns") for s in digest["services"])
+    system_prompt = _build_system_prompt(compare_to_previous, has_campaigns)
     payload = {"services": [_service_payload(s) for s in digest["services"]]}
 
     by_product = {}
@@ -247,12 +315,15 @@ def analyze_partner(digest, client=None):
     try:
         response = client.beta.messages.create(
             model=MODEL,
-            max_tokens=4096,
+            # a per-campaign sentence for every campaign of every service
+            # can outgrow 4096, and a truncated structured output parses
+            # as nothing at all
+            max_tokens=8192 if has_campaigns else 4096,
             betas=[STRUCTURED_OUTPUT_BETA],
             thinking={"type": "disabled"},
             system=[{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}],
             messages=[{"role": "user", "content": json.dumps(payload)}],
-            output_config={"format": {"type": "json_schema", "schema": OUTPUT_SCHEMA}},
+            output_config={"format": {"type": "json_schema", "schema": _output_schema(has_campaigns)}},
         )
         digest["input_tokens"] = response.usage.input_tokens
         digest["output_tokens"] = response.usage.output_tokens
@@ -289,5 +360,11 @@ def analyze_partner(digest, client=None):
         service["recommendations"] = analysis.get("recommendations", [])
         service["notable_days"] = analysis.get("notable_days", [])
         service["notable_hours"] = analysis.get("notable_hours", [])
+        if service.get("campaigns"):
+            service["campaign_overview"] = analysis.get("campaign_overview", "")
+            campaign_summaries = {c["campaign_id"]: c["summary"] for c in analysis.get("campaigns", [])}
+            for campaign in service["campaigns"]:
+                key = campaign["campaign_id"] if campaign["campaign_id"] is not None else NO_CAMPAIGN_KEY
+                campaign["summary"] = campaign_summaries.get(key, "")
 
     return digest

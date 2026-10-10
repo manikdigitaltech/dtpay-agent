@@ -23,7 +23,8 @@ Content-Type: application/json
   "uid": 122,
   "start_date": "2026-07-28",
   "end_date": "2026-08-01",
-  "cp_product_id": null
+  "cp_product_id": null,
+  "campaign_id": null
 }
 ```
 
@@ -33,6 +34,7 @@ Content-Type: application/json
 | `start_date` | date `YYYY-MM-DD` | yes | inclusive |
 | `end_date` | date `YYYY-MM-DD` | yes | inclusive |
 | `cp_product_id` | int \| null | no | omit for "everything this uid may see" |
+| `campaign_id` | string \| null | no | narrows the whole analysis to one campaign of `cp_product_id`. Requires `cp_product_id` (else `400`); unknown for that product → `404`. Integers are accepted and treated as strings |
 
 The range is inclusive of both ends and may not exceed
 `MAX_DATE_RANGE_DAYS` (default 7) — otherwise `400`.
@@ -43,11 +45,38 @@ Response (trimmed):
 {
   "session_id": "2fda4486-f5b2-4d6a-a649-ecdb0793a4e6",
   "date_range": { "start": "2026-07-28", "end": "2026-08-01" },
+  "campaign": null,
   "overall": { "total_resolved": 18432, "completed": 14120, "conversion_rate_pct": 76.6 },
   "products": [ { "product_id": 41, "product_name": "...", "summary": "...", "daily": [], "hourly": [] } ],
   "generated_at": "2026-08-03T09:41:22.104512+00:00"
 }
 ```
+
+Each product also carries `campaign_overview` (string) and `campaigns`
+(array). Both are filled in only when no `campaign_id` was sent and the
+product ran **two or more** campaigns in the range. Otherwise they are `""`
+and `[]`:
+
+```json
+"campaign_overview": "Monthly(150) carries almost all the volume ...",
+"campaigns": [
+  { "campaign_id": "mFTuVimSMRzg2UjGI5u7", "campaign_name": "DTPay Learn2BFit  Monthly(150)",
+    "total_resolved": 10718, "completed": 1001, "conversion_rate_pct": 9.34,
+    "summary": "This campaign represents nearly the entire service's volume ...",
+    "reasons": [ { "reason": "request_timed_out", "occurrences": 4120 } ],
+    "channels": [ { "channel": "upi", "attempts": 3100, "ok": 999 } ] }
+]
+```
+
+Campaigns are sorted by `total_resolved` (largest first) and add up exactly
+to the product's totals. The comparison key is `channels` or `operators`,
+the same as at product level. `campaign_name` can be `null`: either the
+campaign has no name stored, or `campaign_id` is `null` too, meaning
+traffic with no campaign. Fall back to `campaign_id` for display.
+
+`campaign` is `null` unless `campaign_id` was sent, in which case it is
+`{"campaign_id": "...", "campaign_name": "..."}` and every number in the
+response covers that campaign only. Display `campaign_name`.
 
 **Store `session_id`.** A session is created on every `/summary` call
 whether or not the user ever opens the chat, and it is the only handle
