@@ -57,7 +57,8 @@ def _get_client():
 # Bump whenever the shape of a cached /summary response changes, so
 # entries written by older code are never served in the new shape.
 # v2: campaign + per-product campaigns/campaign_overview.
-KEY_VERSION = "v2"
+# v3: placements/devices on products and campaigns.
+KEY_VERSION = "v3"
 
 
 def build_key(start_date, end_date, cp_product_id, uid, campaign_id=None):

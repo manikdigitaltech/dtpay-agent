@@ -33,6 +33,8 @@ from providers import (
     classify_operator_counts,
     classify_campaign_counts,
     classify_payout_campaign_counts,
+    classify_segment_counts,
+    classify_payout_segment_counts,
 )
 
 
@@ -561,3 +563,180 @@ def fetch_campaign_breakdown(day_start, day_end, cp_product_ids, provider_by_pro
         pid: sorted(campaigns, key=lambda c: -c["total_resolved"])
         for pid, campaigns in by_product.items() if len(campaigns) >= 2
     }
+
+
+# ============================================================
+# Placement / device breakdown (on-demand API only)
+# ============================================================
+#
+# placement and device come from the Google Ads click. Both columns
+# exist in both tables, but capture only started on 2026-10-12 (in
+# payment_transactions) and 2026-10-13 (in payout_logs), so everything
+# older is NULL. A payout_logs row whose own column is still empty takes
+# the value from the payment_transactions row it belongs to (verified
+# identical wherever both are set) - that recovers the gap between the
+# two start dates and any payout row written without it.
+#
+# Values are very long-tailed (thousands of distinct placements, most
+# with a handful of rows; ~1,700 device models), so device is reduced
+# to its brand (the part before '+', e.g. samsung+sm-a065f -> samsung)
+# in SQL, and placements are reduced to a type split plus the top few
+# by volume in Python. Rows with no value are dropped here, and
+# reported as the gap between tracked_resolved and the unit's total.
+
+_PAYOUT_PLACEMENT_EXPR = "NULLIF(COALESCE(NULLIF(pl.placement, ''), pt.placement), '')"
+_PAYOUT_DEVICE_EXPR = "NULLIF(LOWER(SUBSTRING_INDEX(COALESCE(NULLIF(pl.device, ''), pt.device), '+', 1)), '')"
+_PLACEMENT_EXPR = "NULLIF(placement, '')"
+_DEVICE_EXPR = "NULLIF(LOWER(SUBSTRING_INDEX(device, '+', 1)), '')"
+
+SEGMENT_COUNTS_SQL = """
+    SELECT product_id, NULLIF(campaign_id, '') AS campaign_id, agg_name AS provider, transaction_status,
+           {segment} AS segment, COUNT(*) AS count
+    FROM payment_transactions
+    WHERE cp_product_id IN %(cp_product_ids)s AND date_time >= %(day_start)s AND date_time < %(day_end)s
+      AND (%(campaign_id)s IS NULL OR campaign_id = %(campaign_id)s)
+    GROUP BY product_id, NULLIF(campaign_id, ''), agg_name, transaction_status, segment
+    HAVING segment IS NOT NULL
+"""
+
+PAYOUT_SEGMENT_COUNTS_SQL = """
+    SELECT pl.product_id, NULLIF(pl.campaign_id, '') AS campaign_id, pl.agg_name AS provider, pl.status,
+           {segment} AS segment, COUNT(*) AS count
+    FROM payout_logs pl
+    LEFT JOIN payment_transactions pt ON pt.id = pl.payment_transaction_id
+    WHERE pl.cp_product_id IN %(cp_product_ids)s
+      AND pl.date_time >= %(day_start)s AND pl.date_time < %(day_end)s
+      AND pl.request_type IN ('newpurchase', 'repurchase')
+      AND (%(campaign_id)s IS NULL OR pl.campaign_id = %(campaign_id)s)
+    GROUP BY pl.product_id, NULLIF(pl.campaign_id, ''), pl.agg_name, pl.status, segment
+    HAVING segment IS NOT NULL
+"""
+
+TOP_PLACEMENTS = 10
+MIN_PLACEMENT_RESOLVED = 30   # below this a placement's own rate is noise - it goes into "other"
+TOP_DEVICE_BRANDS = 8
+OTHER_PLACEMENTS = "(other placements)"
+OTHER_BRANDS = "(other brands)"
+
+
+def _segment_entry(label_key, label, total_resolved, completed):
+    return {
+        label_key: label,
+        "total_resolved": total_resolved,
+        "completed": completed,
+        "conversion_rate_pct": round(completed / total_resolved * 100, 2) if total_resolved else 0.0,
+    }
+
+
+def _rolled_up(label_key, label, segments):
+    entry = _segment_entry(label_key, label, sum(s["total_resolved"] for s in segments),
+                           sum(s["completed"] for s in segments))
+    entry["count"] = len(segments)
+    return entry
+
+
+def _placement_type(placement):
+    return "mobile app" if placement.startswith("mobileapp::") else "website"
+
+
+def _build_placements(segments):
+    """segments: [{segment, total_resolved, completed}] for one unit."""
+    segments = sorted((s for s in segments if s["total_resolved"] > 0), key=lambda s: -s["total_resolved"])
+    if not segments:
+        return None
+
+    by_type = {}
+    for s in segments:
+        by_type.setdefault(_placement_type(s["segment"]), []).append(s)
+
+    top = [s for s in segments if s["total_resolved"] >= MIN_PLACEMENT_RESOLVED][:TOP_PLACEMENTS]
+    top_names = {s["segment"] for s in top}
+    rest = [s for s in segments if s["segment"] not in top_names]
+
+    entries = [_segment_entry("placement", s["segment"], s["total_resolved"], s["completed"]) for s in top]
+    if rest:
+        entries.append(_rolled_up("placement", OTHER_PLACEMENTS, rest))
+
+    return {
+        "tracked_resolved": sum(s["total_resolved"] for s in segments),
+        "by_type": sorted(
+            (_rolled_up("type", t, group) for t, group in by_type.items()), key=lambda e: -e["total_resolved"]),
+        "top": entries,
+    }
+
+
+def _build_devices(segments):
+    segments = sorted((s for s in segments if s["total_resolved"] > 0), key=lambda s: -s["total_resolved"])
+    if not segments:
+        return None
+
+    top, rest = segments[:TOP_DEVICE_BRANDS], segments[TOP_DEVICE_BRANDS:]
+    entries = [_segment_entry("brand", s["segment"], s["total_resolved"], s["completed"]) for s in top]
+    if rest:
+        entries.append(_rolled_up("brand", OTHER_BRANDS, rest))
+
+    return {"tracked_resolved": sum(s["total_resolved"] for s in segments), "by_brand": entries}
+
+
+def fetch_segment_breakdown(day_start, day_end, cp_product_ids, provider_by_product, campaign_id=None):
+    """
+    Placement and device-brand splits, at two levels at once:
+    {"by_product": {product_id: {...}}, "by_campaign": {(product_id, campaign_id): {...}}},
+    each value {"placements": ... | None, "devices": ... | None} - None
+    when nothing in that unit carries the value (e.g. a range from
+    before capture started). campaign_id, when given, narrows
+    everything to that one campaign, same as fetch_all.
+
+    Same path selection and the same providers.py success/exclusion
+    rules as the headline numbers, so a segment's total_resolved is
+    directly comparable to the product's (and, summed over segments,
+    equals tracked_resolved, never more than the unit's total).
+    """
+    empty = {"by_product": {}, "by_campaign": {}}
+    if not cp_product_ids or not provider_by_product:
+        return empty
+
+    def _is_payout_product(pid):
+        return uses_payout_logs_metrics(provider_by_product.get(pid))
+
+    any_legacy = any(not _is_payout_product(pid) for pid in provider_by_product)
+    any_payout = any(_is_payout_product(pid) for pid in provider_by_product)
+    params = {"day_start": day_start, "day_end": day_end, "cp_product_ids": tuple(cp_product_ids),
+              "campaign_id": campaign_id}
+
+    raw = {}
+    with get_connection() as conn:
+        with conn.cursor() as cur:
+            for name, legacy_expr, payout_expr in (("placement", _PLACEMENT_EXPR, _PAYOUT_PLACEMENT_EXPR),
+                                                    ("device", _DEVICE_EXPR, _PAYOUT_DEVICE_EXPR)):
+                legacy_rows, payout_rows = [], []
+                if any_legacy:
+                    cur.execute(SEGMENT_COUNTS_SQL.format(segment=legacy_expr), params)
+                    legacy_rows = _clean_rows(cur.fetchall())
+                if any_payout:
+                    cur.execute(PAYOUT_SEGMENT_COUNTS_SQL.format(segment=payout_expr), params)
+                    payout_rows = _clean_rows(cur.fetchall())
+                raw[name] = (
+                    [r for r in legacy_rows if r["product_id"] in provider_by_product and not _is_payout_product(r["product_id"])],
+                    [r for r in payout_rows if r["product_id"] in provider_by_product and _is_payout_product(r["product_id"])],
+                )
+
+    def _classified(legacy_rows, payout_rows, packed):
+        if packed:
+            legacy_rows = [{**r, "product_id": (r["product_id"], r["campaign_id"])} for r in legacy_rows]
+            payout_rows = [{**r, "product_id": (r["product_id"], r["campaign_id"])} for r in payout_rows]
+        grouped = {}
+        for s in classify_segment_counts(legacy_rows, "segment") + classify_payout_segment_counts(payout_rows, "segment"):
+            grouped.setdefault(s["product_id"], []).append(s)
+        return grouped
+
+    result = empty
+    for level, packed in (("by_product", False), ("by_campaign", True)):
+        placements = _classified(*raw["placement"], packed)
+        devices = _classified(*raw["device"], packed)
+        for key in set(placements) | set(devices):
+            result[level][key] = {
+                "placements": _build_placements(placements.get(key, [])),
+                "devices": _build_devices(devices.get(key, [])),
+            }
+    return result

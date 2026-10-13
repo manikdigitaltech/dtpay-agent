@@ -39,6 +39,7 @@ Both entrypoints run the identical middle three stages; they differ only at the 
 | prev-period comparison | yes — calls `rollup.merge_with_previous()` | never |
 | caching | none | Redis via [summary_cache.py](summary_cache.py) |
 | per-campaign breakdown | never | `extract.fetch_campaign_breakdown()`, whole-product requests only |
+| placement / device split | never | `extract.fetch_segment_breakdown()`, on products and on each campaign |
 | output | HTML via `email_template` → `email_sender` | JSON + `session_id`, passed through `sanitize_aggregator_names()` |
 
 `fetch_all(day_start, day_end, cp_product_ids, ...)` does **not** resolve scope itself — callers pass `cp_product_ids` in explicitly, because the two eligibility rules are unrelated. It returns a 7-tuple: `(product_metrics, reason_breakdown, operator_breakdown, daily_metrics, hourly_metrics, daily_reason_breakdown, daily_operator_breakdown)`; the last four are empty lists unless the matching `include_*` flag is set.
@@ -54,6 +55,14 @@ Each service carries `service["campaigns"]`. When at least one service in a dige
 - It raises `max_tokens` to 8192.
 
 When no service has campaigns, the prompt and schema are byte-identical to before. Claude keys its per-campaign summaries by `campaign_id`, using `""` for the no-campaign bucket. The Redis key carries `KEY_VERSION`; bump it whenever the cached response shape changes.
+
+**Placement / device split.** `extract.fetch_segment_breakdown()` returns `{"by_product": {pid: ...}, "by_campaign": {(pid, cid): ...}}`. Each value is `{placements, devices}`, and either can be `None` when nothing has data. Things to know:
+- **Capture is recent.** Both columns were captured only from 2026-10-12 in `payment_transactions` and from 2026-10-13 in `payout_logs`.
+- **Payout rows fall back** to the linked `payment_transactions` row (`LEFT JOIN … ON pt.id = pl.payment_transaction_id`) when their own column is empty.
+- **Values are reduced first** because they are extremely long-tailed (about 3k placements and 1.7k device models per day). Device becomes its brand in SQL. Placements become an app-vs-website split plus the top 10 with at least 30 resolved in Python, and the rest go into an "other" row.
+- **Classification** uses `providers.classify_segment_counts()` and `classify_payout_segment_counts()`, which are generic over a field name.
+- **Gating in analyze.py**: `_segment_payload()` adds `covers_all_traffic`, which is true when coverage is at least 95%. Without it, Claude kept leaving out the partial-coverage caveat. The prompt section is gated by `has_segments`, so the weekly email prompt is still unchanged.
+- **The text has no schema fields of its own.** It goes into the existing summary, recommendations and campaign fields.
 
 ## Architectural rules that are easy to break
 

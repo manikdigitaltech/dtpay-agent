@@ -68,7 +68,7 @@ STRUCTURED_OUTPUT_BETA = "structured-outputs-2025-11-13"
 logger = get_agent_logger(__name__)
 
 
-def _build_system_prompt(compare_to_previous, has_campaigns=False):
+def _build_system_prompt(compare_to_previous, has_campaigns=False, has_segments=False):
     comparison_summary_note = (
         " When previous-period data is present, make the comparison the point of the summary "
         "(what changed, and - if the reason/operator breakdown suggests why - what likely drove "
@@ -103,6 +103,10 @@ def _build_system_prompt(compare_to_previous, has_campaigns=False):
     campaigns_note = """
 - campaign_overview and campaigns: some services also have `campaigns`, the same service's traffic split by marketing campaign (the service's totals are exactly the sum of its campaigns), each with its own numbers, top_reasons and operators. For those, write campaign_overview: one to two sentences comparing the campaigns against each other - which are converting best and worst relative to the rest, and what in their reasons or operator/channel mix most likely explains the gap. Then, in campaigns, one sentence per campaign (keyed by its campaign_id, exactly as given) on how that campaign is doing and why. Refer to campaigns by campaign_name, never by ID. A campaign with much lower volume than the others can look artificially strong or weak - say so instead of ranking it. For a service with no `campaigns`, return an empty campaign_overview and an empty campaigns list.""" if has_campaigns else ""
 
+    # Same gating: only the on-demand API attaches placement/device splits.
+    segments_note = """
+- placements and devices: some services (and campaigns) also carry `placements` - where the Google ad was shown: `by_type` splits mobile apps from websites, `top` lists the highest-volume individual placements (app placements are in Google's "mobileapp::<n>-<package name>" form) plus a rolled-up "(other placements)" row covering the long tail - and `devices`, split by phone brand plus "(other brands)". `tracked_resolved` is how much of the volume carries this information at all; when `covers_all_traffic` is false, say in the same sentence that the placement/device picture only covers part of the traffic, rather than presenting it as the full picture. Where a placement type, a specific placement or a device brand clearly converts better or worse than the rest on meaningful volume, work it into the summary (and into that campaign's sentence and the campaign_overview, for campaigns), and it can drive a recommendation - a placement that brings real volume but rarely converts is something the partner can exclude in their own campaign settings, unlike operator-side failures. Refer to an app placement by its package name (e.g. com.goguru.app), not the full Google string. When `placements`/`devices` are absent, or nothing in them stands out, don't mention them.""" if has_segments else ""
+
     return f"""You are a performance analyst for DTPay, a payment integration platform, writing an analysis that will be shown directly to content-service partners (e.g. KidsFlix, Learn2bFit) about how their service performed{intro_period_note}.
 
 DTPay routes different products through different payment providers (e.g. pawapay for African mobile money, razorpay for Indian UPI/card/bank payments), given to you as `provider`. What "operator" means in the data depends on it: for a mobile-money provider it's the actual telecom network (MTN, Airtel, ...); for a card/UPI provider it's the payment channel or method instead (upi, card, ...), not a network. Use whichever framing actually fits the given provider rather than assuming it's always a mobile network.
@@ -111,7 +115,7 @@ For each service you're given, write:
 - summary: {summary_length_note} on what's actually happening, grounded in the failure/rejection reasons and operator data - not generic commentary. Refer to the service by its product_name and the country by its full name (both given to you) rather than an ID or abbreviation.{comparison_summary_note}{temporal_emphasis_note}
 - recommendations: 1-3 specific, actionable items tied to the actual data (a specific failure reason, a specific underperforming network or channel{recommendation_shift_note}), not generic advice like "improve your conversion rate."
 - notable_days: you're also given `daily`, a day-by-day breakdown given as a compact table: the first line names the columns (date, total_resolved, completed, conversion_rate_pct), and each line after that is one day's values in that same order, comma-separated - the same numbers a list of objects would give you, just not repeating the column names on every line. Only include a date here if your summary text explicitly names and discusses that day by weekday - never flag a day here that the summary doesn't actually talk about, since the report highlights these days visually and the reader will expect the text right below to explain why. Use this sparingly: only for a day that's a genuinely clear standout (a real dip or spike), not just modestly above or below the period's average{notable_days_priority_note}. A day with much lower volume than the others can look artificially swingy in its rate; weigh that before calling it notable at all.
-- notable_hours: you're also given `hourly`, an hour-by-hour breakdown covering the same period as `daily`, in the same compact table format (columns: hour, total_resolved, completed, conversion_rate_pct), when the requested range is short enough for it to be included at all - "(none)" if it wasn't. If a specific hour (or a recurring time of day across multiple days) clearly stands out - a burst of volume, a spike or crash in conversion - name it in your summary and list its exact timestamp (the "hour" column's value) here, same bar as notable_days: a genuinely clear standout, only ever an hour you actually discuss, and weigh low volume before calling one out. If `hourly` is "(none)", leave this empty too.{campaigns_note}
+- notable_hours: you're also given `hourly`, an hour-by-hour breakdown covering the same period as `daily`, in the same compact table format (columns: hour, total_resolved, completed, conversion_rate_pct), when the requested range is short enough for it to be included at all - "(none)" if it wasn't. If a specific hour (or a recurring time of day across multiple days) clearly stands out - a burst of volume, a spike or crash in conversion - name it in your summary and list its exact timestamp (the "hour" column's value) here, same bar as notable_days: a genuinely clear standout, only ever an hour you actually discuss, and weigh low volume before calling one out. If `hourly` is "(none)", leave this empty too.{campaigns_note}{segments_note}
 
 Rules:
 - Never restate specific conversion percentages, counts, or figures in your text - those are shown to the partner separately, right next to your summary. This applies to daily and hourly figures too, not just the headline ones. Referring to categories ("insufficient balance", "one of the networks") or directional language ("improved", "worsened", "roughly doubled") is fine; restating "3.28%" or "1,401 of 42,684" is not.
@@ -194,6 +198,29 @@ def _output_schema(has_campaigns):
     }
 
 
+# Below this share of the unit's volume, a placement/device split is
+# flagged to Claude as covering only part of the traffic.
+FULL_COVERAGE_SHARE = 0.95
+
+
+def _segment_payload(unit):
+    """placements/devices for a service or a campaign, only the ones
+    that actually have data - absent rather than null, like previous_*.
+    covers_all_traffic is spelled out rather than left for Claude to
+    work out from tracked_resolved vs total_resolved - it reliably
+    skipped the caveat when it had to notice the gap itself."""
+    payload = {}
+    for key in ("placements", "devices"):
+        if unit.get(key):
+            covers_all = unit[key]["tracked_resolved"] >= FULL_COVERAGE_SHARE * unit["total_resolved"]
+            payload[key] = {**unit[key], "covers_all_traffic": covers_all}
+    return payload
+
+
+def _has_segments(service):
+    return bool(_segment_payload(service)) or any(_segment_payload(c) for c in service.get("campaigns", []))
+
+
 def _service_payload(service):
     """Strips a rolled-up service record down to what Claude needs to
     see. previous_* fields are only included when compare_to_previous
@@ -243,6 +270,8 @@ def _service_payload(service):
         ),
     }
 
+    payload.update(_segment_payload(service))
+
     if service.get("campaigns"):
         payload["campaigns"] = [
             {
@@ -255,6 +284,7 @@ def _service_payload(service):
                 "top_reasons": [{"reason": r["reason_code"], "occurrences": r["occurrences"]} for r in c["reasons"][:3]],
                 "operators": [{"operator": o["operator"], "attempts": o["attempts"], "ok": o["operator_ok"]}
                               for o in c["operators"]],
+                **_segment_payload(c),
             }
             for c in service["campaigns"]
         ]
@@ -297,7 +327,8 @@ def analyze_partner(digest, client=None):
     client = client or anthropic.Anthropic(api_key=ANTHROPIC_API_KEY, timeout=CLAUDE_TIMEOUT_SECONDS)
     compare_to_previous = bool(digest["services"]) and bool(digest["services"][0].get("compare_to_previous"))
     has_campaigns = any(s.get("campaigns") for s in digest["services"])
-    system_prompt = _build_system_prompt(compare_to_previous, has_campaigns)
+    has_segments = any(_has_segments(s) for s in digest["services"])
+    system_prompt = _build_system_prompt(compare_to_previous, has_campaigns, has_segments)
     payload = {"services": [_service_payload(s) for s in digest["services"]]}
 
     by_product = {}

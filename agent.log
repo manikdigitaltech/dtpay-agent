@@ -1276,3 +1276,2182 @@ Rules:
 }
 2026-10-10 20:39:26,500 INFO Claude response for cp_id=122:
 {"services": [{"product_id": 5345, "summary": "Learn2bFit150's transactions in India are overwhelmingly routed through UPI, which carries nearly all volume but converts at a low rate, dragging the overall picture down. The dominant failure reason by far is request timing out, well ahead of insufficient funds and outright payment declines, pointing to UPI collect requests going unacknowledged rather than users actively rejecting payments. Across the week performance is fairly choppy day to day, with Sunday standing out as a clear low point even though it carried by far the heaviest volume of the period, while the lighter-volume Wednesday posted the strongest conversion. Within days, the pattern is also uneven by hour: late evening hours tend to carry the bulk of attempts, and on Sunday the two hours spanning 8pm-10pm saw a huge surge in volume that converted poorly, pulling that whole day down.", "recommendations": ["Investigate UPI collect-request timeouts specifically around the high-volume evening window (8-10pm), since that's where most failed volume is concentrated.", "Consider shortening the UPI payment request expiry or adding a retry/reminder nudge before timeout, since timeouts outnumber every other failure reason combined.", "Treat emandate as effectively non-functional for this flow given its near-total failure rate on the small sample it got, and review whether it should be offered as a payment option at all."], "notable_days": ["2026-10-05"], "notable_hours": ["2026-10-05T20:00:00", "2026-10-05T21:00:00"]}]}
+2026-10-13 11:14:51,167 INFO Claude request for cp_id=122:
+--- system ---
+You are a performance analyst for DTPay, a payment integration platform, writing an analysis that will be shown directly to content-service partners (e.g. KidsFlix, Learn2bFit) about how their service performed.
+
+DTPay routes different products through different payment providers (e.g. pawapay for African mobile money, razorpay for Indian UPI/card/bank payments), given to you as `provider`. What "operator" means in the data depends on it: for a mobile-money provider it's the actual telecom network (MTN, Airtel, ...); for a card/UPI provider it's the payment channel or method instead (upi, card, ...), not a network. Use whichever framing actually fits the given provider rather than assuming it's always a mobile network.
+
+For each service you're given, write:
+- summary: two to four sentences on what's actually happening, grounded in the failure/rejection reasons and operator data - not generic commentary. Refer to the service by its product_name and the country by its full name (both given to you) rather than an ID or abbreviation. Since there's no previous period to compare against here, the daily breakdown (and the hourly one, when given) should be a real part of the summary, not just a source for a rare standout - describe the actual shape of the period (fairly steady throughout, weaker at certain times of day, one day or hour pulling the average down or up) in addition to the reason/operator picture, even when nothing rises to the bar for notable_days/notable_hours specifically.
+- recommendations: 1-3 specific, actionable items tied to the actual data (a specific failure reason, a specific underperforming network or channel), not generic advice like "improve your conversion rate."
+- notable_days: you're also given `daily`, a day-by-day breakdown given as a compact table: the first line names the columns (date, total_resolved, completed, conversion_rate_pct), and each line after that is one day's values in that same order, comma-separated - the same numbers a list of objects would give you, just not repeating the column names on every line. Only include a date here if your summary text explicitly names and discusses that day by weekday - never flag a day here that the summary doesn't actually talk about, since the report highlights these days visually and the reader will expect the text right below to explain why. Use this sparingly: only for a day that's a genuinely clear standout (a real dip or spike), not just modestly above or below the period's average. A day with much lower volume than the others can look artificially swingy in its rate; weigh that before calling it notable at all.
+- notable_hours: you're also given `hourly`, an hour-by-hour breakdown covering the same period as `daily`, in the same compact table format (columns: hour, total_resolved, completed, conversion_rate_pct), when the requested range is short enough for it to be included at all - "(none)" if it wasn't. If a specific hour (or a recurring time of day across multiple days) clearly stands out - a burst of volume, a spike or crash in conversion - name it in your summary and list its exact timestamp (the "hour" column's value) here, same bar as notable_days: a genuinely clear standout, only ever an hour you actually discuss, and weigh low volume before calling one out. If `hourly` is "(none)", leave this empty too.
+- campaign_overview and campaigns: some services also have `campaigns`, the same service's traffic split by marketing campaign (the service's totals are exactly the sum of its campaigns), each with its own numbers, top_reasons and operators. For those, write campaign_overview: one to two sentences comparing the campaigns against each other - which are converting best and worst relative to the rest, and what in their reasons or operator/channel mix most likely explains the gap. Then, in campaigns, one sentence per campaign (keyed by its campaign_id, exactly as given) on how that campaign is doing and why. Refer to campaigns by campaign_name, never by ID. A campaign with much lower volume than the others can look artificially strong or weak - say so instead of ranking it. For a service with no `campaigns`, return an empty campaign_overview and an empty campaigns list.
+- placements and devices: some services (and campaigns) also carry `placements` - where the Google ad was shown: `by_type` splits mobile apps from websites, `top` lists the highest-volume individual placements (app placements are in Google's "mobileapp::<n>-<package name>" form) plus a rolled-up "(other placements)" row covering the long tail - and `devices`, split by phone brand plus "(other brands)". `tracked_resolved` is how much of the volume carries this information at all; when it's well below total_resolved, say the split only covers part of the traffic rather than presenting it as the full picture. Where a placement type, a specific placement or a device brand clearly converts better or worse than the rest on meaningful volume, work it into the summary (and into that campaign's sentence and the campaign_overview, for campaigns), and it can drive a recommendation - a placement that brings real volume but rarely converts is something the partner can exclude in their own campaign settings, unlike operator-side failures. Refer to an app placement by its package name (e.g. com.goguru.app), not the full Google string. When `placements`/`devices` are absent, or nothing in them stands out, don't mention them.
+
+Rules:
+- Never restate specific conversion percentages, counts, or figures in your text - those are shown to the partner separately, right next to your summary. This applies to daily and hourly figures too, not just the headline ones. Referring to categories ("insufficient balance", "one of the networks") or directional language ("improved", "worsened", "roughly doubled") is fine; restating "3.28%" or "1,401 of 42,684" is not.
+- Do not frame operator- or customer-side issues (insufficient balance, OTP timeout, an operator's own eligibility rules, "no active deposit flow") as the partner's fault - describe those as market/network conditions outside the partner's control, not something for them to fix on their end.
+- If total_resolved is under about 30, say plainly that the volume is too low to draw a real conclusion from, rather than treating a single-digit sample as a meaningful rate.
+
+--- user message ---
+{
+  "services": [
+    {
+      "product_id": 5290,
+      "product_name": "KidsFlix Monthly",
+      "country": "ZMB",
+      "provider": "pawapay",
+      "total_resolved": 9013,
+      "completed": 658,
+      "failed": 8355,
+      "conversion_rate_pct": 7.3,
+      "top_reasons": [
+        {
+          "reason": "The customer did not approve the payment. Either the customer did not enter their PIN in time or incorrect PIN was entered.",
+          "occurrences": 4598
+        },
+        {
+          "reason": "The customer does not have enough funds to complete the payment.",
+          "occurrences": 2225
+        },
+        {
+          "reason": "The correspondent is currently unavailable. Please check https://status.pawapay.cloud for details.",
+          "occurrences": 431
+        },
+        {
+          "reason": "The customer did not authorize the payment in time or the transaction timed out at the Mobile Network Operator",
+          "occurrences": 377
+        },
+        {
+          "reason": "The customer entered incorrect PIN to authorise the payment.",
+          "occurrences": 290
+        }
+      ],
+      "operators": [
+        {
+          "operator": "MTN_MOMO_ZMB",
+          "attempts": 1795,
+          "ok": 81
+        },
+        {
+          "operator": "AIRTEL_OAPI_ZMB",
+          "attempts": 6841,
+          "ok": 577
+        },
+        {
+          "operator": "ZAMTEL_ZMB",
+          "attempts": 246,
+          "ok": 0
+        }
+      ],
+      "daily": "date,total_resolved,completed,conversion_rate_pct\n2026-10-12,7356,526,7.15\n2026-10-13,1657,132,7.97",
+      "hourly": "hour,total_resolved,completed,conversion_rate_pct\n2026-10-12T00:00:00,461,36,7.81\n2026-10-12T01:00:00,344,22,6.4\n2026-10-12T02:00:00,182,14,7.69\n2026-10-12T03:00:00,90,3,3.33\n2026-10-12T04:00:00,65,8,12.31\n2026-10-12T05:00:00,64,4,6.25\n2026-10-12T06:00:00,41,1,2.44\n2026-10-12T07:00:00,118,11,9.32\n2026-10-12T08:00:00,299,3,1.0\n2026-10-12T09:00:00,305,17,5.57\n2026-10-12T10:00:00,290,24,8.28\n2026-10-12T11:00:00,372,37,9.95\n2026-10-12T12:00:00,327,26,7.95\n2026-10-12T13:00:00,350,28,8.0\n2026-10-12T14:00:00,376,40,10.64\n2026-10-12T15:00:00,356,29,8.15\n2026-10-12T16:00:00,423,43,10.17\n2026-10-12T17:00:00,399,23,5.76\n2026-10-12T18:00:00,424,30,7.08\n2026-10-12T19:00:00,439,28,6.38\n2026-10-12T20:00:00,344,23,6.69\n2026-10-12T21:00:00,455,28,6.15\n2026-10-12T22:00:00,409,20,4.89\n2026-10-12T23:00:00,423,28,6.62\n2026-10-13T00:00:00,444,31,6.98\n2026-10-13T01:00:00,357,24,6.72\n2026-10-13T02:00:00,150,16,10.67\n2026-10-13T03:00:00,101,9,8.91\n2026-10-13T04:00:00,64,4,6.25\n2026-10-13T05:00:00,43,1,2.33\n2026-10-13T06:00:00,48,4,8.33\n2026-10-13T07:00:00,105,15,14.29\n2026-10-13T08:00:00,191,16,8.38\n2026-10-13T09:00:00,154,12,7.79\n2026-10-13T10:00:00,0,0,0.0\n2026-10-13T11:00:00,0,0,0.0\n2026-10-13T12:00:00,0,0,0.0\n2026-10-13T13:00:00,0,0,0.0\n2026-10-13T14:00:00,0,0,0.0\n2026-10-13T15:00:00,0,0,0.0\n2026-10-13T16:00:00,0,0,0.0\n2026-10-13T17:00:00,0,0,0.0\n2026-10-13T18:00:00,0,0,0.0\n2026-10-13T19:00:00,0,0,0.0\n2026-10-13T20:00:00,0,0,0.0\n2026-10-13T21:00:00,0,0,0.0\n2026-10-13T22:00:00,0,0,0.0\n2026-10-13T23:00:00,0,0,0.0",
+      "placements": {
+        "tracked_resolved": 2921,
+        "by_type": [
+          {
+            "type": "mobile app",
+            "total_resolved": 2498,
+            "completed": 179,
+            "conversion_rate_pct": 7.17,
+            "count": 623
+          },
+          {
+            "type": "website",
+            "total_resolved": 423,
+            "completed": 25,
+            "conversion_rate_pct": 5.91,
+            "count": 154
+          }
+        ],
+        "top": [
+          {
+            "placement": "mobileapp::2-com.wetrackk.lt",
+            "total_resolved": 91,
+            "completed": 8,
+            "conversion_rate_pct": 8.79
+          },
+          {
+            "placement": "www.ecer.com",
+            "total_resolved": 60,
+            "completed": 3,
+            "conversion_rate_pct": 5.0
+          },
+          {
+            "placement": "mobileapp::2-open.chat.gpt.aichat.bot.free.app",
+            "total_resolved": 57,
+            "completed": 2,
+            "conversion_rate_pct": 3.51
+          },
+          {
+            "placement": "mobileapp::2-com.vita.track.health",
+            "total_resolved": 54,
+            "completed": 1,
+            "conversion_rate_pct": 1.85
+          },
+          {
+            "placement": "mobileapp::2-com.fbvideodownloader.downloadfbvideos",
+            "total_resolved": 51,
+            "completed": 1,
+            "conversion_rate_pct": 1.96
+          },
+          {
+            "placement": "mobileapp::2-videoplayer.videodownloader.downloader",
+            "total_resolved": 48,
+            "completed": 3,
+            "conversion_rate_pct": 6.25
+          },
+          {
+            "placement": "mobileapp::2-pdf.pdfreader.viewer.editor.free",
+            "total_resolved": 39,
+            "completed": 3,
+            "conversion_rate_pct": 7.69
+          },
+          {
+            "placement": "mobileapp::2-com.nxl.aienglishtutor.ailearnlanguage.aichatbot",
+            "total_resolved": 39,
+            "completed": 2,
+            "conversion_rate_pct": 5.13
+          },
+          {
+            "placement": "mobileapp::2-com.merryblue.facebookvideodownloader",
+            "total_resolved": 39,
+            "completed": 1,
+            "conversion_rate_pct": 2.56
+          },
+          {
+            "placement": "mobileapp::2-whatsap.stuar.sittus",
+            "total_resolved": 37,
+            "completed": 1,
+            "conversion_rate_pct": 2.7
+          },
+          {
+            "placement": "(other placements)",
+            "total_resolved": 2406,
+            "completed": 179,
+            "conversion_rate_pct": 7.44,
+            "count": 767
+          }
+        ]
+      },
+      "devices": {
+        "tracked_resolved": 2874,
+        "by_brand": [
+          {
+            "brand": "tecno",
+            "total_resolved": 899,
+            "completed": 56,
+            "conversion_rate_pct": 6.23
+          },
+          {
+            "brand": "samsung",
+            "total_resolved": 614,
+            "completed": 51,
+            "conversion_rate_pct": 8.31
+          },
+          {
+            "brand": "infinix",
+            "total_resolved": 504,
+            "completed": 37,
+            "conversion_rate_pct": 7.34
+          },
+          {
+            "brand": "itel",
+            "total_resolved": 321,
+            "completed": 24,
+            "conversion_rate_pct": 7.48
+          },
+          {
+            "brand": "android",
+            "total_resolved": 167,
+            "completed": 7,
+            "conversion_rate_pct": 4.19
+          },
+          {
+            "brand": "huawei",
+            "total_resolved": 82,
+            "completed": 5,
+            "conversion_rate_pct": 6.1
+          },
+          {
+            "brand": "google",
+            "total_resolved": 44,
+            "completed": 5,
+            "conversion_rate_pct": 11.36
+          },
+          {
+            "brand": "xiaomi",
+            "total_resolved": 40,
+            "completed": 1,
+            "conversion_rate_pct": 2.5
+          },
+          {
+            "brand": "(other brands)",
+            "total_resolved": 203,
+            "completed": 15,
+            "conversion_rate_pct": 7.39,
+            "count": 24
+          }
+        ]
+      },
+      "campaigns": [
+        {
+          "campaign_id": "HbDnGOiytpqHfNwTO6AD",
+          "campaign_name": "Wallet-OD-V2-ZMB-KF-1",
+          "total_resolved": 3840,
+          "completed": 274,
+          "conversion_rate_pct": 7.14,
+          "top_reasons": [
+            {
+              "reason": "The customer did not approve the payment. Either the customer did not enter their PIN in time or incorrect PIN was entered.",
+              "occurrences": 1658
+            },
+            {
+              "reason": "The customer does not have enough funds to complete the payment.",
+              "occurrences": 1197
+            },
+            {
+              "reason": "The customer did not authorize the payment in time or the transaction timed out at the Mobile Network Operator",
+              "occurrences": 234
+            }
+          ],
+          "operators": [
+            {
+              "operator": "AIRTEL_OAPI_ZMB",
+              "attempts": 2560,
+              "ok": 226
+            },
+            {
+              "operator": "MTN_MOMO_ZMB",
+              "attempts": 1122,
+              "ok": 48
+            },
+            {
+              "operator": "ZAMTEL_ZMB",
+              "attempts": 93,
+              "ok": 0
+            }
+          ],
+          "placements": {
+            "tracked_resolved": 1214,
+            "by_type": [
+              {
+                "type": "mobile app",
+                "total_resolved": 934,
+                "completed": 67,
+                "conversion_rate_pct": 7.17,
+                "count": 321
+              },
+              {
+                "type": "website",
+                "total_resolved": 280,
+                "completed": 16,
+                "conversion_rate_pct": 5.71,
+                "count": 102
+              }
+            ],
+            "top": [
+              {
+                "placement": "www.ecer.com",
+                "total_resolved": 60,
+                "completed": 3,
+                "conversion_rate_pct": 5.0
+              },
+              {
+                "placement": "mobileapp::2-com.wetrackk.lt",
+                "total_resolved": 33,
+                "completed": 1,
+                "conversion_rate_pct": 3.03
+              },
+              {
+                "placement": "mobileapp::2-com.dramarush.bingeshort",
+                "total_resolved": 30,
+                "completed": 1,
+                "conversion_rate_pct": 3.33
+              },
+              {
+                "placement": "(other placements)",
+                "total_resolved": 1091,
+                "completed": 78,
+                "conversion_rate_pct": 7.15,
+                "count": 420
+              }
+            ]
+          },
+          "devices": {
+            "tracked_resolved": 1167,
+            "by_brand": [
+              {
+                "brand": "tecno",
+                "total_resolved": 379,
+                "completed": 31,
+                "conversion_rate_pct": 8.18
+              },
+              {
+                "brand": "infinix",
+                "total_resolved": 238,
+                "completed": 19,
+                "conversion_rate_pct": 7.98
+              },
+              {
+                "brand": "itel",
+                "total_resolved": 157,
+                "completed": 10,
+                "conversion_rate_pct": 6.37
+              },
+              {
+                "brand": "samsung",
+                "total_resolved": 156,
+                "completed": 10,
+                "conversion_rate_pct": 6.41
+              },
+              {
+                "brand": "android",
+                "total_resolved": 84,
+                "completed": 2,
+                "conversion_rate_pct": 2.38
+              },
+              {
+                "brand": "xiaomi",
+                "total_resolved": 22,
+                "completed": 0,
+                "conversion_rate_pct": 0.0
+              },
+              {
+                "brand": "huawei",
+                "total_resolved": 21,
+                "completed": 1,
+                "conversion_rate_pct": 4.76
+              },
+              {
+                "brand": "apple",
+                "total_resolved": 19,
+                "completed": 2,
+                "conversion_rate_pct": 10.53
+              },
+              {
+                "brand": "(other brands)",
+                "total_resolved": 91,
+                "completed": 5,
+                "conversion_rate_pct": 5.49,
+                "count": 16
+              }
+            ]
+          }
+        },
+        {
+          "campaign_id": "UvPMMgS5CLykqt3xhBkV",
+          "campaign_name": "Zambia Hybrid Minime-kidsflix- 5243/7013-DG",
+          "total_resolved": 2974,
+          "completed": 221,
+          "conversion_rate_pct": 7.43,
+          "top_reasons": [
+            {
+              "reason": "The customer did not approve the payment. Either the customer did not enter their PIN in time or incorrect PIN was entered.",
+              "occurrences": 1928
+            },
+            {
+              "reason": "The customer does not have enough funds to complete the payment.",
+              "occurrences": 377
+            },
+            {
+              "reason": "The correspondent is currently unavailable. Please check https://status.pawapay.cloud for details.",
+              "occurrences": 180
+            }
+          ],
+          "operators": [
+            {
+              "operator": "AIRTEL_OAPI_ZMB",
+              "attempts": 2715,
+              "ok": 213
+            },
+            {
+              "operator": "MTN_MOMO_ZMB",
+              "attempts": 143,
+              "ok": 8
+            },
+            {
+              "operator": "ZAMTEL_ZMB",
+              "attempts": 95,
+              "ok": 0
+            }
+          ],
+          "placements": {
+            "tracked_resolved": 1653,
+            "by_type": [
+              {
+                "type": "mobile app",
+                "total_resolved": 1532,
+                "completed": 112,
+                "conversion_rate_pct": 7.31,
+                "count": 398
+              },
+              {
+                "type": "website",
+                "total_resolved": 121,
+                "completed": 7,
+                "conversion_rate_pct": 5.79,
+                "count": 45
+              }
+            ],
+            "top": [
+              {
+                "placement": "mobileapp::2-com.wetrackk.lt",
+                "total_resolved": 58,
+                "completed": 7,
+                "conversion_rate_pct": 12.07
+              },
+              {
+                "placement": "mobileapp::2-open.chat.gpt.aichat.bot.free.app",
+                "total_resolved": 46,
+                "completed": 2,
+                "conversion_rate_pct": 4.35
+              },
+              {
+                "placement": "mobileapp::2-com.fbvideodownloader.downloadfbvideos",
+                "total_resolved": 41,
+                "completed": 1,
+                "conversion_rate_pct": 2.44
+              },
+              {
+                "placement": "mobileapp::2-com.vita.track.health",
+                "total_resolved": 40,
+                "completed": 1,
+                "conversion_rate_pct": 2.5
+              },
+              {
+                "placement": "mobileapp::2-videoplayer.videodownloader.downloader",
+                "total_resolved": 35,
+                "completed": 2,
+                "conversion_rate_pct": 5.71
+              },
+              {
+                "placement": "mobileapp::2-com.merryblue.facebookvideodownloader",
+                "total_resolved": 34,
+                "completed": 1,
+                "conversion_rate_pct": 2.94
+              },
+              {
+                "placement": "mobileapp::2-com.nxl.aienglishtutor.ailearnlanguage.aichatbot",
+                "total_resolved": 32,
+                "completed": 1,
+                "conversion_rate_pct": 3.12
+              },
+              {
+                "placement": "mobileapp::2-whatsap.stuar.sittus",
+                "total_resolved": 31,
+                "completed": 1,
+                "conversion_rate_pct": 3.23
+              },
+              {
+                "placement": "mobileapp::2-pdfscanner.scan.pdf.scanner.free",
+                "total_resolved": 30,
+                "completed": 4,
+                "conversion_rate_pct": 13.33
+              },
+              {
+                "placement": "static.phxfeeds.com",
+                "total_resolved": 30,
+                "completed": 0,
+                "conversion_rate_pct": 0.0
+              },
+              {
+                "placement": "(other placements)",
+                "total_resolved": 1276,
+                "completed": 99,
+                "conversion_rate_pct": 7.76,
+                "count": 433
+              }
+            ]
+          },
+          "devices": {
+            "tracked_resolved": 1653,
+            "by_brand": [
+              {
+                "brand": "tecno",
+                "total_resolved": 508,
+                "completed": 25,
+                "conversion_rate_pct": 4.92
+              },
+              {
+                "brand": "samsung",
+                "total_resolved": 440,
+                "completed": 39,
+                "conversion_rate_pct": 8.86
+              },
+              {
+                "brand": "infinix",
+                "total_resolved": 263,
+                "completed": 18,
+                "conversion_rate_pct": 6.84
+              },
+              {
+                "brand": "itel",
+                "total_resolved": 161,
+                "completed": 14,
+                "conversion_rate_pct": 8.7
+              },
+              {
+                "brand": "android",
+                "total_resolved": 77,
+                "completed": 5,
+                "conversion_rate_pct": 6.49
+              },
+              {
+                "brand": "huawei",
+                "total_resolved": 58,
+                "completed": 4,
+                "conversion_rate_pct": 6.9
+              },
+              {
+                "brand": "google",
+                "total_resolved": 27,
+                "completed": 3,
+                "conversion_rate_pct": 11.11
+              },
+              {
+                "brand": "xiaomi",
+                "total_resolved": 18,
+                "completed": 1,
+                "conversion_rate_pct": 5.56
+              },
+              {
+                "brand": "(other brands)",
+                "total_resolved": 101,
+                "completed": 10,
+                "conversion_rate_pct": 9.9,
+                "count": 23
+              }
+            ]
+          }
+        },
+        {
+          "campaign_id": "fkfYl9lNcTJFSP6u5VZR",
+          "campaign_name": "Wallet-Mobi-V2-ZMB-KF-1",
+          "total_resolved": 2110,
+          "completed": 158,
+          "conversion_rate_pct": 7.49,
+          "top_reasons": [
+            {
+              "reason": "The customer did not approve the payment. Either the customer did not enter their PIN in time or incorrect PIN was entered.",
+              "occurrences": 965
+            },
+            {
+              "reason": "The customer does not have enough funds to complete the payment.",
+              "occurrences": 635
+            },
+            {
+              "reason": "The customer did not authorize the payment in time or the transaction timed out at the Mobile Network Operator",
+              "occurrences": 100
+            }
+          ],
+          "operators": [
+            {
+              "operator": "AIRTEL_OAPI_ZMB",
+              "attempts": 1511,
+              "ok": 136
+            },
+            {
+              "operator": "MTN_MOMO_ZMB",
+              "attempts": 505,
+              "ok": 22
+            },
+            {
+              "operator": "ZAMTEL_ZMB",
+              "attempts": 49,
+              "ok": 0
+            }
+          ]
+        },
+        {
+          "campaign_id": "BsLy4VuoZv6SsYu4iPX5",
+          "campaign_name": "Wallet-JD-V2-ZMB-KF-2",
+          "total_resolved": 90,
+          "completed": 6,
+          "conversion_rate_pct": 6.67,
+          "top_reasons": [
+            {
+              "reason": "The customer did not approve the payment. Either the customer did not enter their PIN in time or incorrect PIN was entered.",
+              "occurrences": 47
+            },
+            {
+              "reason": "The customer does not have enough funds to complete the payment.",
+              "occurrences": 16
+            },
+            {
+              "reason": "The correspondent is currently unavailable. Please check https://status.pawapay.cloud for details.",
+              "occurrences": 8
+            }
+          ],
+          "operators": [
+            {
+              "operator": "AIRTEL_OAPI_ZMB",
+              "attempts": 56,
+              "ok": 3
+            },
+            {
+              "operator": "MTN_MOMO_ZMB",
+              "attempts": 25,
+              "ok": 3
+            },
+            {
+              "operator": "ZAMTEL_ZMB",
+              "attempts": 9,
+              "ok": 0
+            }
+          ],
+          "placements": {
+            "tracked_resolved": 54,
+            "by_type": [
+              {
+                "type": "mobile app",
+                "total_resolved": 32,
+                "completed": 0,
+                "conversion_rate_pct": 0.0,
+                "count": 25
+              },
+              {
+                "type": "website",
+                "total_resolved": 22,
+                "completed": 2,
+                "conversion_rate_pct": 9.09,
+                "count": 16
+              }
+            ],
+            "top": [
+              {
+                "placement": "(other placements)",
+                "total_resolved": 54,
+                "completed": 2,
+                "conversion_rate_pct": 3.7,
+                "count": 41
+              }
+            ]
+          },
+          "devices": {
+            "tracked_resolved": 54,
+            "by_brand": [
+              {
+                "brand": "samsung",
+                "total_resolved": 18,
+                "completed": 2,
+                "conversion_rate_pct": 11.11
+              },
+              {
+                "brand": "tecno",
+                "total_resolved": 12,
+                "completed": 0,
+                "conversion_rate_pct": 0.0
+              },
+              {
+                "brand": "android",
+                "total_resolved": 6,
+                "completed": 0,
+                "conversion_rate_pct": 0.0
+              },
+              {
+                "brand": "infinix",
+                "total_resolved": 3,
+                "completed": 0,
+                "conversion_rate_pct": 0.0
+              },
+              {
+                "brand": "itel",
+                "total_resolved": 3,
+                "completed": 0,
+                "conversion_rate_pct": 0.0
+              },
+              {
+                "brand": "huawei",
+                "total_resolved": 3,
+                "completed": 0,
+                "conversion_rate_pct": 0.0
+              },
+              {
+                "brand": "google",
+                "total_resolved": 2,
+                "completed": 0,
+                "conversion_rate_pct": 0.0
+              },
+              {
+                "brand": "honor",
+                "total_resolved": 2,
+                "completed": 0,
+                "conversion_rate_pct": 0.0
+              },
+              {
+                "brand": "(other brands)",
+                "total_resolved": 5,
+                "completed": 0,
+                "conversion_rate_pct": 0.0,
+                "count": 4
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
+2026-10-13 11:15:06,277 INFO Claude response for cp_id=122:
+{"services": [{"product_id": 5290, "summary": "KidsFlix Monthly's Zambian mobile money traffic converted at a low rate over this two-day window, driven overwhelmingly by customers not approving the payment in time (or mistyping their PIN) and, secondarily, insufficient funds at the moment of charge - both market-side frictions rather than anything on the integration itself. Across operators, Zamtel converted essentially nobody while carrying meaningful volume, MTN also lagged well behind Airtel, which handled the bulk of attempts and converted noticeably better. The two days were fairly close in rate, though October 12 carried the vast majority of volume while October 13's traffic tapered off sharply after mid-morning with no further activity recorded for the rest of that day. Within October 12, performance held up reasonably steadily through the day with scattered weak pockets overnight and in the early morning hours. On the placement side, a handful of individual app placements (health tracker, downloader, and chat-bot style apps) converted noticeably worse than the broader mix despite real volume, while device-level results were fairly consistent aside from Xiaomi lagging slightly.", "recommendations": ["Investigate why Zamtel transactions are converting at essentially zero despite real volume - this points to a network-side routing or eligibility issue worth raising with pawapay rather than something fixable in-app.", "Consider deprioritizing or excluding the weaker-converting app placements (e.g. com.vita.track.health, com.fbvideodownloader.downloadfbvideos, com.merryblue.facebookvideodownloader) from campaign targeting, since they bring volume but rarely convert.", "Since PIN non-approval and insufficient funds dominate failures, consider adjusting retry/reminder messaging timing for customers rather than changing the payment flow itself, as these are customer-side behaviors outside DTPay's or KidsFlix's control."], "notable_days": [], "notable_hours": [], "campaign_overview": "Wallet-Mobi-V2-ZMB-KF-1 and the Zambia Hybrid Minime campaign converted modestly better than Wallet-OD-V2-ZMB-KF-1, consistent with the latter routing a larger share of its volume through MTN, which underperforms Airtel across the board; Wallet-JD-V2-ZMB-KF-2's volume is too low to draw a real conclusion from. Reasons are broadly similar across campaigns, with PIN non-approval and insufficient funds dominating everywhere.", "campaigns": [{"campaign_id": "HbDnGOiytpqHfNwTO6AD", "summary": "Wallet-OD-V2-ZMB-KF-1 converted somewhat below the service average, likely tied to its heavier reliance on MTN relative to Airtel, alongside the same PIN-approval and balance issues seen elsewhere."}, {"campaign_id": "UvPMMgS5CLykqt3xhBkV", "summary": "Zambia Hybrid Minime-kidsflix converted close to the service average, routing most of its volume through the better-performing Airtel network, though a few individual app placements (notably the health tracker and Facebook video downloader apps) dragged on an otherwise stronger mix."}, {"campaign_id": "fkfYl9lNcTJFSP6u5VZR", "summary": "Wallet-Mobi-V2-ZMB-KF-1 was the best-converting of the higher-volume campaigns, again correlating with a heavier skew toward Airtel over MTN."}, {"campaign_id": "BsLy4VuoZv6SsYu4iPX5", "summary": "Wallet-JD-V2-ZMB-KF-2's volume is too low to draw a real conclusion from."}]}]}
+2026-10-13 11:15:47,243 INFO Claude request for cp_id=122:
+--- system ---
+You are a performance analyst for DTPay, a payment integration platform, writing an analysis that will be shown directly to content-service partners (e.g. KidsFlix, Learn2bFit) about how their service performed.
+
+DTPay routes different products through different payment providers (e.g. pawapay for African mobile money, razorpay for Indian UPI/card/bank payments), given to you as `provider`. What "operator" means in the data depends on it: for a mobile-money provider it's the actual telecom network (MTN, Airtel, ...); for a card/UPI provider it's the payment channel or method instead (upi, card, ...), not a network. Use whichever framing actually fits the given provider rather than assuming it's always a mobile network.
+
+For each service you're given, write:
+- summary: two to four sentences on what's actually happening, grounded in the failure/rejection reasons and operator data - not generic commentary. Refer to the service by its product_name and the country by its full name (both given to you) rather than an ID or abbreviation. Since there's no previous period to compare against here, the daily breakdown (and the hourly one, when given) should be a real part of the summary, not just a source for a rare standout - describe the actual shape of the period (fairly steady throughout, weaker at certain times of day, one day or hour pulling the average down or up) in addition to the reason/operator picture, even when nothing rises to the bar for notable_days/notable_hours specifically.
+- recommendations: 1-3 specific, actionable items tied to the actual data (a specific failure reason, a specific underperforming network or channel), not generic advice like "improve your conversion rate."
+- notable_days: you're also given `daily`, a day-by-day breakdown given as a compact table: the first line names the columns (date, total_resolved, completed, conversion_rate_pct), and each line after that is one day's values in that same order, comma-separated - the same numbers a list of objects would give you, just not repeating the column names on every line. Only include a date here if your summary text explicitly names and discusses that day by weekday - never flag a day here that the summary doesn't actually talk about, since the report highlights these days visually and the reader will expect the text right below to explain why. Use this sparingly: only for a day that's a genuinely clear standout (a real dip or spike), not just modestly above or below the period's average. A day with much lower volume than the others can look artificially swingy in its rate; weigh that before calling it notable at all.
+- notable_hours: you're also given `hourly`, an hour-by-hour breakdown covering the same period as `daily`, in the same compact table format (columns: hour, total_resolved, completed, conversion_rate_pct), when the requested range is short enough for it to be included at all - "(none)" if it wasn't. If a specific hour (or a recurring time of day across multiple days) clearly stands out - a burst of volume, a spike or crash in conversion - name it in your summary and list its exact timestamp (the "hour" column's value) here, same bar as notable_days: a genuinely clear standout, only ever an hour you actually discuss, and weigh low volume before calling one out. If `hourly` is "(none)", leave this empty too.
+- campaign_overview and campaigns: some services also have `campaigns`, the same service's traffic split by marketing campaign (the service's totals are exactly the sum of its campaigns), each with its own numbers, top_reasons and operators. For those, write campaign_overview: one to two sentences comparing the campaigns against each other - which are converting best and worst relative to the rest, and what in their reasons or operator/channel mix most likely explains the gap. Then, in campaigns, one sentence per campaign (keyed by its campaign_id, exactly as given) on how that campaign is doing and why. Refer to campaigns by campaign_name, never by ID. A campaign with much lower volume than the others can look artificially strong or weak - say so instead of ranking it. For a service with no `campaigns`, return an empty campaign_overview and an empty campaigns list.
+- placements and devices: some services (and campaigns) also carry `placements` - where the Google ad was shown: `by_type` splits mobile apps from websites, `top` lists the highest-volume individual placements (app placements are in Google's "mobileapp::<n>-<package name>" form) plus a rolled-up "(other placements)" row covering the long tail - and `devices`, split by phone brand plus "(other brands)". `tracked_resolved` is how much of the volume carries this information at all; when `covers_all_traffic` is false, say in the same sentence that the placement/device picture only covers part of the traffic, rather than presenting it as the full picture. Where a placement type, a specific placement or a device brand clearly converts better or worse than the rest on meaningful volume, work it into the summary (and into that campaign's sentence and the campaign_overview, for campaigns), and it can drive a recommendation - a placement that brings real volume but rarely converts is something the partner can exclude in their own campaign settings, unlike operator-side failures. Refer to an app placement by its package name (e.g. com.goguru.app), not the full Google string. When `placements`/`devices` are absent, or nothing in them stands out, don't mention them.
+
+Rules:
+- Never restate specific conversion percentages, counts, or figures in your text - those are shown to the partner separately, right next to your summary. This applies to daily and hourly figures too, not just the headline ones. Referring to categories ("insufficient balance", "one of the networks") or directional language ("improved", "worsened", "roughly doubled") is fine; restating "3.28%" or "1,401 of 42,684" is not.
+- Do not frame operator- or customer-side issues (insufficient balance, OTP timeout, an operator's own eligibility rules, "no active deposit flow") as the partner's fault - describe those as market/network conditions outside the partner's control, not something for them to fix on their end.
+- If total_resolved is under about 30, say plainly that the volume is too low to draw a real conclusion from, rather than treating a single-digit sample as a meaningful rate.
+
+--- user message ---
+{
+  "services": [
+    {
+      "product_id": 5290,
+      "product_name": "KidsFlix Monthly",
+      "country": "ZMB",
+      "provider": "pawapay",
+      "total_resolved": 9019,
+      "completed": 660,
+      "failed": 8359,
+      "conversion_rate_pct": 7.32,
+      "top_reasons": [
+        {
+          "reason": "The customer did not approve the payment. Either the customer did not enter their PIN in time or incorrect PIN was entered.",
+          "occurrences": 4598
+        },
+        {
+          "reason": "The customer does not have enough funds to complete the payment.",
+          "occurrences": 2225
+        },
+        {
+          "reason": "The correspondent is currently unavailable. Please check https://status.pawapay.cloud for details.",
+          "occurrences": 431
+        },
+        {
+          "reason": "The customer did not authorize the payment in time or the transaction timed out at the Mobile Network Operator",
+          "occurrences": 377
+        },
+        {
+          "reason": "The customer entered incorrect PIN to authorise the payment.",
+          "occurrences": 290
+        }
+      ],
+      "operators": [
+        {
+          "operator": "MTN_MOMO_ZMB",
+          "attempts": 1795,
+          "ok": 81
+        },
+        {
+          "operator": "AIRTEL_OAPI_ZMB",
+          "attempts": 6847,
+          "ok": 579
+        },
+        {
+          "operator": "ZAMTEL_ZMB",
+          "attempts": 246,
+          "ok": 0
+        }
+      ],
+      "daily": "date,total_resolved,completed,conversion_rate_pct\n2026-10-12,7356,526,7.15\n2026-10-13,1663,134,8.06",
+      "hourly": "hour,total_resolved,completed,conversion_rate_pct\n2026-10-12T00:00:00,461,36,7.81\n2026-10-12T01:00:00,344,22,6.4\n2026-10-12T02:00:00,182,14,7.69\n2026-10-12T03:00:00,90,3,3.33\n2026-10-12T04:00:00,65,8,12.31\n2026-10-12T05:00:00,64,4,6.25\n2026-10-12T06:00:00,41,1,2.44\n2026-10-12T07:00:00,118,11,9.32\n2026-10-12T08:00:00,299,3,1.0\n2026-10-12T09:00:00,305,17,5.57\n2026-10-12T10:00:00,290,24,8.28\n2026-10-12T11:00:00,372,37,9.95\n2026-10-12T12:00:00,327,26,7.95\n2026-10-12T13:00:00,350,28,8.0\n2026-10-12T14:00:00,376,40,10.64\n2026-10-12T15:00:00,356,29,8.15\n2026-10-12T16:00:00,423,43,10.17\n2026-10-12T17:00:00,399,23,5.76\n2026-10-12T18:00:00,424,30,7.08\n2026-10-12T19:00:00,439,28,6.38\n2026-10-12T20:00:00,344,23,6.69\n2026-10-12T21:00:00,455,28,6.15\n2026-10-12T22:00:00,409,20,4.89\n2026-10-12T23:00:00,423,28,6.62\n2026-10-13T00:00:00,444,31,6.98\n2026-10-13T01:00:00,357,24,6.72\n2026-10-13T02:00:00,150,16,10.67\n2026-10-13T03:00:00,101,9,8.91\n2026-10-13T04:00:00,64,4,6.25\n2026-10-13T05:00:00,43,1,2.33\n2026-10-13T06:00:00,48,4,8.33\n2026-10-13T07:00:00,105,15,14.29\n2026-10-13T08:00:00,191,16,8.38\n2026-10-13T09:00:00,160,14,8.75\n2026-10-13T10:00:00,0,0,0.0\n2026-10-13T11:00:00,0,0,0.0\n2026-10-13T12:00:00,0,0,0.0\n2026-10-13T13:00:00,0,0,0.0\n2026-10-13T14:00:00,0,0,0.0\n2026-10-13T15:00:00,0,0,0.0\n2026-10-13T16:00:00,0,0,0.0\n2026-10-13T17:00:00,0,0,0.0\n2026-10-13T18:00:00,0,0,0.0\n2026-10-13T19:00:00,0,0,0.0\n2026-10-13T20:00:00,0,0,0.0\n2026-10-13T21:00:00,0,0,0.0\n2026-10-13T22:00:00,0,0,0.0\n2026-10-13T23:00:00,0,0,0.0",
+      "placements": {
+        "tracked_resolved": 2924,
+        "by_type": [
+          {
+            "type": "mobile app",
+            "total_resolved": 2501,
+            "completed": 180,
+            "conversion_rate_pct": 7.2,
+            "count": 624
+          },
+          {
+            "type": "website",
+            "total_resolved": 423,
+            "completed": 25,
+            "conversion_rate_pct": 5.91,
+            "count": 154
+          }
+        ],
+        "top": [
+          {
+            "placement": "mobileapp::2-com.wetrackk.lt",
+            "total_resolved": 91,
+            "completed": 8,
+            "conversion_rate_pct": 8.79
+          },
+          {
+            "placement": "www.ecer.com",
+            "total_resolved": 60,
+            "completed": 3,
+            "conversion_rate_pct": 5.0
+          },
+          {
+            "placement": "mobileapp::2-open.chat.gpt.aichat.bot.free.app",
+            "total_resolved": 57,
+            "completed": 2,
+            "conversion_rate_pct": 3.51
+          },
+          {
+            "placement": "mobileapp::2-com.vita.track.health",
+            "total_resolved": 54,
+            "completed": 1,
+            "conversion_rate_pct": 1.85
+          },
+          {
+            "placement": "mobileapp::2-com.fbvideodownloader.downloadfbvideos",
+            "total_resolved": 51,
+            "completed": 1,
+            "conversion_rate_pct": 1.96
+          },
+          {
+            "placement": "mobileapp::2-videoplayer.videodownloader.downloader",
+            "total_resolved": 48,
+            "completed": 3,
+            "conversion_rate_pct": 6.25
+          },
+          {
+            "placement": "mobileapp::2-pdf.pdfreader.viewer.editor.free",
+            "total_resolved": 39,
+            "completed": 3,
+            "conversion_rate_pct": 7.69
+          },
+          {
+            "placement": "mobileapp::2-com.nxl.aienglishtutor.ailearnlanguage.aichatbot",
+            "total_resolved": 39,
+            "completed": 2,
+            "conversion_rate_pct": 5.13
+          },
+          {
+            "placement": "mobileapp::2-com.merryblue.facebookvideodownloader",
+            "total_resolved": 39,
+            "completed": 1,
+            "conversion_rate_pct": 2.56
+          },
+          {
+            "placement": "mobileapp::2-whatsap.stuar.sittus",
+            "total_resolved": 37,
+            "completed": 1,
+            "conversion_rate_pct": 2.7
+          },
+          {
+            "placement": "(other placements)",
+            "total_resolved": 2409,
+            "completed": 180,
+            "conversion_rate_pct": 7.47,
+            "count": 768
+          }
+        ],
+        "covers_all_traffic": false
+      },
+      "devices": {
+        "tracked_resolved": 2876,
+        "by_brand": [
+          {
+            "brand": "tecno",
+            "total_resolved": 899,
+            "completed": 56,
+            "conversion_rate_pct": 6.23
+          },
+          {
+            "brand": "samsung",
+            "total_resolved": 615,
+            "completed": 51,
+            "conversion_rate_pct": 8.29
+          },
+          {
+            "brand": "infinix",
+            "total_resolved": 505,
+            "completed": 37,
+            "conversion_rate_pct": 7.33
+          },
+          {
+            "brand": "itel",
+            "total_resolved": 321,
+            "completed": 24,
+            "conversion_rate_pct": 7.48
+          },
+          {
+            "brand": "android",
+            "total_resolved": 167,
+            "completed": 7,
+            "conversion_rate_pct": 4.19
+          },
+          {
+            "brand": "huawei",
+            "total_resolved": 82,
+            "completed": 5,
+            "conversion_rate_pct": 6.1
+          },
+          {
+            "brand": "google",
+            "total_resolved": 44,
+            "completed": 5,
+            "conversion_rate_pct": 11.36
+          },
+          {
+            "brand": "xiaomi",
+            "total_resolved": 40,
+            "completed": 1,
+            "conversion_rate_pct": 2.5
+          },
+          {
+            "brand": "(other brands)",
+            "total_resolved": 203,
+            "completed": 15,
+            "conversion_rate_pct": 7.39,
+            "count": 24
+          }
+        ],
+        "covers_all_traffic": false
+      },
+      "campaigns": [
+        {
+          "campaign_id": "HbDnGOiytpqHfNwTO6AD",
+          "campaign_name": "Wallet-OD-V2-ZMB-KF-1",
+          "total_resolved": 3842,
+          "completed": 275,
+          "conversion_rate_pct": 7.16,
+          "top_reasons": [
+            {
+              "reason": "The customer did not approve the payment. Either the customer did not enter their PIN in time or incorrect PIN was entered.",
+              "occurrences": 1658
+            },
+            {
+              "reason": "The customer does not have enough funds to complete the payment.",
+              "occurrences": 1197
+            },
+            {
+              "reason": "The customer did not authorize the payment in time or the transaction timed out at the Mobile Network Operator",
+              "occurrences": 234
+            }
+          ],
+          "operators": [
+            {
+              "operator": "AIRTEL_OAPI_ZMB",
+              "attempts": 2562,
+              "ok": 227
+            },
+            {
+              "operator": "MTN_MOMO_ZMB",
+              "attempts": 1122,
+              "ok": 48
+            },
+            {
+              "operator": "ZAMTEL_ZMB",
+              "attempts": 93,
+              "ok": 0
+            }
+          ],
+          "placements": {
+            "tracked_resolved": 1216,
+            "by_type": [
+              {
+                "type": "mobile app",
+                "total_resolved": 936,
+                "completed": 68,
+                "conversion_rate_pct": 7.26,
+                "count": 322
+              },
+              {
+                "type": "website",
+                "total_resolved": 280,
+                "completed": 16,
+                "conversion_rate_pct": 5.71,
+                "count": 102
+              }
+            ],
+            "top": [
+              {
+                "placement": "www.ecer.com",
+                "total_resolved": 60,
+                "completed": 3,
+                "conversion_rate_pct": 5.0
+              },
+              {
+                "placement": "mobileapp::2-com.wetrackk.lt",
+                "total_resolved": 33,
+                "completed": 1,
+                "conversion_rate_pct": 3.03
+              },
+              {
+                "placement": "mobileapp::2-com.dramarush.bingeshort",
+                "total_resolved": 30,
+                "completed": 1,
+                "conversion_rate_pct": 3.33
+              },
+              {
+                "placement": "(other placements)",
+                "total_resolved": 1093,
+                "completed": 79,
+                "conversion_rate_pct": 7.23,
+                "count": 421
+              }
+            ],
+            "covers_all_traffic": false
+          },
+          "devices": {
+            "tracked_resolved": 1168,
+            "by_brand": [
+              {
+                "brand": "tecno",
+                "total_resolved": 379,
+                "completed": 31,
+                "conversion_rate_pct": 8.18
+              },
+              {
+                "brand": "infinix",
+                "total_resolved": 238,
+                "completed": 19,
+                "conversion_rate_pct": 7.98
+              },
+              {
+                "brand": "itel",
+                "total_resolved": 157,
+                "completed": 10,
+                "conversion_rate_pct": 6.37
+              },
+              {
+                "brand": "samsung",
+                "total_resolved": 157,
+                "completed": 10,
+                "conversion_rate_pct": 6.37
+              },
+              {
+                "brand": "android",
+                "total_resolved": 84,
+                "completed": 2,
+                "conversion_rate_pct": 2.38
+              },
+              {
+                "brand": "xiaomi",
+                "total_resolved": 22,
+                "completed": 0,
+                "conversion_rate_pct": 0.0
+              },
+              {
+                "brand": "huawei",
+                "total_resolved": 21,
+                "completed": 1,
+                "conversion_rate_pct": 4.76
+              },
+              {
+                "brand": "apple",
+                "total_resolved": 19,
+                "completed": 2,
+                "conversion_rate_pct": 10.53
+              },
+              {
+                "brand": "(other brands)",
+                "total_resolved": 91,
+                "completed": 5,
+                "conversion_rate_pct": 5.49,
+                "count": 16
+              }
+            ],
+            "covers_all_traffic": false
+          }
+        },
+        {
+          "campaign_id": "UvPMMgS5CLykqt3xhBkV",
+          "campaign_name": "Zambia Hybrid Minime-kidsflix- 5243/7013-DG",
+          "total_resolved": 2975,
+          "completed": 221,
+          "conversion_rate_pct": 7.43,
+          "top_reasons": [
+            {
+              "reason": "The customer did not approve the payment. Either the customer did not enter their PIN in time or incorrect PIN was entered.",
+              "occurrences": 1928
+            },
+            {
+              "reason": "The customer does not have enough funds to complete the payment.",
+              "occurrences": 377
+            },
+            {
+              "reason": "The correspondent is currently unavailable. Please check https://status.pawapay.cloud for details.",
+              "occurrences": 180
+            }
+          ],
+          "operators": [
+            {
+              "operator": "AIRTEL_OAPI_ZMB",
+              "attempts": 2716,
+              "ok": 213
+            },
+            {
+              "operator": "MTN_MOMO_ZMB",
+              "attempts": 143,
+              "ok": 8
+            },
+            {
+              "operator": "ZAMTEL_ZMB",
+              "attempts": 95,
+              "ok": 0
+            }
+          ],
+          "placements": {
+            "tracked_resolved": 1654,
+            "by_type": [
+              {
+                "type": "mobile app",
+                "total_resolved": 1533,
+                "completed": 112,
+                "conversion_rate_pct": 7.31,
+                "count": 398
+              },
+              {
+                "type": "website",
+                "total_resolved": 121,
+                "completed": 7,
+                "conversion_rate_pct": 5.79,
+                "count": 45
+              }
+            ],
+            "top": [
+              {
+                "placement": "mobileapp::2-com.wetrackk.lt",
+                "total_resolved": 58,
+                "completed": 7,
+                "conversion_rate_pct": 12.07
+              },
+              {
+                "placement": "mobileapp::2-open.chat.gpt.aichat.bot.free.app",
+                "total_resolved": 46,
+                "completed": 2,
+                "conversion_rate_pct": 4.35
+              },
+              {
+                "placement": "mobileapp::2-com.fbvideodownloader.downloadfbvideos",
+                "total_resolved": 41,
+                "completed": 1,
+                "conversion_rate_pct": 2.44
+              },
+              {
+                "placement": "mobileapp::2-com.vita.track.health",
+                "total_resolved": 40,
+                "completed": 1,
+                "conversion_rate_pct": 2.5
+              },
+              {
+                "placement": "mobileapp::2-videoplayer.videodownloader.downloader",
+                "total_resolved": 35,
+                "completed": 2,
+                "conversion_rate_pct": 5.71
+              },
+              {
+                "placement": "mobileapp::2-com.merryblue.facebookvideodownloader",
+                "total_resolved": 34,
+                "completed": 1,
+                "conversion_rate_pct": 2.94
+              },
+              {
+                "placement": "mobileapp::2-com.nxl.aienglishtutor.ailearnlanguage.aichatbot",
+                "total_resolved": 32,
+                "completed": 1,
+                "conversion_rate_pct": 3.12
+              },
+              {
+                "placement": "mobileapp::2-whatsap.stuar.sittus",
+                "total_resolved": 31,
+                "completed": 1,
+                "conversion_rate_pct": 3.23
+              },
+              {
+                "placement": "mobileapp::2-pdfscanner.scan.pdf.scanner.free",
+                "total_resolved": 30,
+                "completed": 4,
+                "conversion_rate_pct": 13.33
+              },
+              {
+                "placement": "static.phxfeeds.com",
+                "total_resolved": 30,
+                "completed": 0,
+                "conversion_rate_pct": 0.0
+              },
+              {
+                "placement": "(other placements)",
+                "total_resolved": 1277,
+                "completed": 99,
+                "conversion_rate_pct": 7.75,
+                "count": 433
+              }
+            ],
+            "covers_all_traffic": false
+          },
+          "devices": {
+            "tracked_resolved": 1654,
+            "by_brand": [
+              {
+                "brand": "tecno",
+                "total_resolved": 508,
+                "completed": 25,
+                "conversion_rate_pct": 4.92
+              },
+              {
+                "brand": "samsung",
+                "total_resolved": 440,
+                "completed": 39,
+                "conversion_rate_pct": 8.86
+              },
+              {
+                "brand": "infinix",
+                "total_resolved": 264,
+                "completed": 18,
+                "conversion_rate_pct": 6.82
+              },
+              {
+                "brand": "itel",
+                "total_resolved": 161,
+                "completed": 14,
+                "conversion_rate_pct": 8.7
+              },
+              {
+                "brand": "android",
+                "total_resolved": 77,
+                "completed": 5,
+                "conversion_rate_pct": 6.49
+              },
+              {
+                "brand": "huawei",
+                "total_resolved": 58,
+                "completed": 4,
+                "conversion_rate_pct": 6.9
+              },
+              {
+                "brand": "google",
+                "total_resolved": 27,
+                "completed": 3,
+                "conversion_rate_pct": 11.11
+              },
+              {
+                "brand": "xiaomi",
+                "total_resolved": 18,
+                "completed": 1,
+                "conversion_rate_pct": 5.56
+              },
+              {
+                "brand": "(other brands)",
+                "total_resolved": 101,
+                "completed": 10,
+                "conversion_rate_pct": 9.9,
+                "count": 23
+              }
+            ],
+            "covers_all_traffic": false
+          }
+        },
+        {
+          "campaign_id": "fkfYl9lNcTJFSP6u5VZR",
+          "campaign_name": "Wallet-Mobi-V2-ZMB-KF-1",
+          "total_resolved": 2112,
+          "completed": 158,
+          "conversion_rate_pct": 7.48,
+          "top_reasons": [
+            {
+              "reason": "The customer did not approve the payment. Either the customer did not enter their PIN in time or incorrect PIN was entered.",
+              "occurrences": 965
+            },
+            {
+              "reason": "The customer does not have enough funds to complete the payment.",
+              "occurrences": 635
+            },
+            {
+              "reason": "The customer did not authorize the payment in time or the transaction timed out at the Mobile Network Operator",
+              "occurrences": 100
+            }
+          ],
+          "operators": [
+            {
+              "operator": "AIRTEL_OAPI_ZMB",
+              "attempts": 1513,
+              "ok": 136
+            },
+            {
+              "operator": "MTN_MOMO_ZMB",
+              "attempts": 505,
+              "ok": 22
+            },
+            {
+              "operator": "ZAMTEL_ZMB",
+              "attempts": 49,
+              "ok": 0
+            }
+          ]
+        },
+        {
+          "campaign_id": "BsLy4VuoZv6SsYu4iPX5",
+          "campaign_name": "Wallet-JD-V2-ZMB-KF-2",
+          "total_resolved": 90,
+          "completed": 6,
+          "conversion_rate_pct": 6.67,
+          "top_reasons": [
+            {
+              "reason": "The customer did not approve the payment. Either the customer did not enter their PIN in time or incorrect PIN was entered.",
+              "occurrences": 47
+            },
+            {
+              "reason": "The customer does not have enough funds to complete the payment.",
+              "occurrences": 16
+            },
+            {
+              "reason": "The correspondent is currently unavailable. Please check https://status.pawapay.cloud for details.",
+              "occurrences": 8
+            }
+          ],
+          "operators": [
+            {
+              "operator": "AIRTEL_OAPI_ZMB",
+              "attempts": 56,
+              "ok": 3
+            },
+            {
+              "operator": "MTN_MOMO_ZMB",
+              "attempts": 25,
+              "ok": 3
+            },
+            {
+              "operator": "ZAMTEL_ZMB",
+              "attempts": 9,
+              "ok": 0
+            }
+          ],
+          "placements": {
+            "tracked_resolved": 54,
+            "by_type": [
+              {
+                "type": "mobile app",
+                "total_resolved": 32,
+                "completed": 0,
+                "conversion_rate_pct": 0.0,
+                "count": 25
+              },
+              {
+                "type": "website",
+                "total_resolved": 22,
+                "completed": 2,
+                "conversion_rate_pct": 9.09,
+                "count": 16
+              }
+            ],
+            "top": [
+              {
+                "placement": "(other placements)",
+                "total_resolved": 54,
+                "completed": 2,
+                "conversion_rate_pct": 3.7,
+                "count": 41
+              }
+            ],
+            "covers_all_traffic": false
+          },
+          "devices": {
+            "tracked_resolved": 54,
+            "by_brand": [
+              {
+                "brand": "samsung",
+                "total_resolved": 18,
+                "completed": 2,
+                "conversion_rate_pct": 11.11
+              },
+              {
+                "brand": "tecno",
+                "total_resolved": 12,
+                "completed": 0,
+                "conversion_rate_pct": 0.0
+              },
+              {
+                "brand": "android",
+                "total_resolved": 6,
+                "completed": 0,
+                "conversion_rate_pct": 0.0
+              },
+              {
+                "brand": "infinix",
+                "total_resolved": 3,
+                "completed": 0,
+                "conversion_rate_pct": 0.0
+              },
+              {
+                "brand": "itel",
+                "total_resolved": 3,
+                "completed": 0,
+                "conversion_rate_pct": 0.0
+              },
+              {
+                "brand": "huawei",
+                "total_resolved": 3,
+                "completed": 0,
+                "conversion_rate_pct": 0.0
+              },
+              {
+                "brand": "google",
+                "total_resolved": 2,
+                "completed": 0,
+                "conversion_rate_pct": 0.0
+              },
+              {
+                "brand": "honor",
+                "total_resolved": 2,
+                "completed": 0,
+                "conversion_rate_pct": 0.0
+              },
+              {
+                "brand": "(other brands)",
+                "total_resolved": 5,
+                "completed": 0,
+                "conversion_rate_pct": 0.0,
+                "count": 4
+              }
+            ],
+            "covers_all_traffic": false
+          }
+        }
+      ]
+    }
+  ]
+}
+2026-10-13 11:16:00,975 INFO Claude response for cp_id=122:
+{"services": [{"product_id": 5290, "summary": "KidsFlix Monthly's Zambian mobile-money traffic converted at a low rate over the two days, with the overwhelming majority of failures driven by customers not approving the PIN prompt in time and by insufficient funds, together accounting for the vast bulk of all failed attempts. Airtel carried most of the volume but converted noticeably better than MTN, while Zamtel processed a smaller volume with zero successful payments, suggesting a flow issue specific to that network over this window. Volume was heavily concentrated on the first day, which also pulled the blended rate down slightly; the second day saw much lower volume (traffic effectively stopped after mid-morning) and a modestly better rate, though that's based on a thinner sample. Within the first day, conversion dipped hardest in the early morning hours and recovered somewhat through the afternoon and evening, though it stayed choppy hour to hour rather than following a clean pattern.", "recommendations": ["Zamtel is converting at essentially zero despite real attempt volume - treat this as a network-side issue outside your control, but consider deprioritizing Zamtel-originated traffic in your own campaign targeting if this persists.", "MTN is converting well below Airtel on comparable volume; if you can see which campaigns or placements skew toward MTN users, consider whether that mix is worth continued investment.", "The PIN-approval and insufficient-funds reasons dominate failures and are customer/network-side (timing out or lacking funds) - not fixable on your end, but worth messaging users to have funds ready and respond promptly to the PIN prompt."], "notable_days": [], "notable_hours": [], "campaign_overview": "Wallet-Mobi-V2-ZMB-KF-1 and the Zambia Hybrid Minime campaign converted modestly better than Wallet-OD-V2-ZMB-KF-1, largely tracking each campaign's mix of Airtel versus MTN attempts rather than any difference in failure reasons, which look similar across all three main campaigns. Wallet-JD-V2-ZMB-KF-2 ran on too little volume to draw a real conclusion from.", "campaigns": [{"campaign_id": "HbDnGOiytpqHfNwTO6AD", "summary": "Wallet-OD-V2-ZMB-KF-1 posted the weakest conversion of the larger campaigns, consistent with it carrying a heavier share of MTN attempts (which underperformed Airtel) alongside the same dominant PIN-approval and insufficient-funds failure pattern."}, {"campaign_id": "UvPMMgS5CLykqt3xhBkV", "summary": "The Zambia Hybrid Minime campaign converted slightly above the service average, running almost entirely through Airtel, though the website placement static.phxfeeds.com brought meaningful volume with no completions at all and is worth excluding."}, {"campaign_id": "fkfYl9lNcTJFSP6u5VZR", "summary": "Wallet-Mobi-V2-ZMB-KF-1 had the best conversion of the main campaigns, again skewing toward Airtel over MTN, with the same PIN-approval and insufficient-funds reasons leading failures."}, {"campaign_id": "BsLy4VuoZv6SsYu4iPX5", "summary": "Wallet-JD-V2-ZMB-KF-2's volume is too low to draw a real conclusion from, though it's worth noting none of its tracked mobile-app placements converted at all."}]}]}
+2026-10-13 11:16:22,256 INFO Claude request for cp_id=122:
+--- system ---
+You are a performance analyst for DTPay, a payment integration platform, writing an analysis that will be shown directly to content-service partners (e.g. KidsFlix, Learn2bFit) about how their service performed.
+
+DTPay routes different products through different payment providers (e.g. pawapay for African mobile money, razorpay for Indian UPI/card/bank payments), given to you as `provider`. What "operator" means in the data depends on it: for a mobile-money provider it's the actual telecom network (MTN, Airtel, ...); for a card/UPI provider it's the payment channel or method instead (upi, card, ...), not a network. Use whichever framing actually fits the given provider rather than assuming it's always a mobile network.
+
+For each service you're given, write:
+- summary: two to four sentences on what's actually happening, grounded in the failure/rejection reasons and operator data - not generic commentary. Refer to the service by its product_name and the country by its full name (both given to you) rather than an ID or abbreviation. Since there's no previous period to compare against here, the daily breakdown (and the hourly one, when given) should be a real part of the summary, not just a source for a rare standout - describe the actual shape of the period (fairly steady throughout, weaker at certain times of day, one day or hour pulling the average down or up) in addition to the reason/operator picture, even when nothing rises to the bar for notable_days/notable_hours specifically.
+- recommendations: 1-3 specific, actionable items tied to the actual data (a specific failure reason, a specific underperforming network or channel), not generic advice like "improve your conversion rate."
+- notable_days: you're also given `daily`, a day-by-day breakdown given as a compact table: the first line names the columns (date, total_resolved, completed, conversion_rate_pct), and each line after that is one day's values in that same order, comma-separated - the same numbers a list of objects would give you, just not repeating the column names on every line. Only include a date here if your summary text explicitly names and discusses that day by weekday - never flag a day here that the summary doesn't actually talk about, since the report highlights these days visually and the reader will expect the text right below to explain why. Use this sparingly: only for a day that's a genuinely clear standout (a real dip or spike), not just modestly above or below the period's average. A day with much lower volume than the others can look artificially swingy in its rate; weigh that before calling it notable at all.
+- notable_hours: you're also given `hourly`, an hour-by-hour breakdown covering the same period as `daily`, in the same compact table format (columns: hour, total_resolved, completed, conversion_rate_pct), when the requested range is short enough for it to be included at all - "(none)" if it wasn't. If a specific hour (or a recurring time of day across multiple days) clearly stands out - a burst of volume, a spike or crash in conversion - name it in your summary and list its exact timestamp (the "hour" column's value) here, same bar as notable_days: a genuinely clear standout, only ever an hour you actually discuss, and weigh low volume before calling one out. If `hourly` is "(none)", leave this empty too.
+- campaign_overview and campaigns: some services also have `campaigns`, the same service's traffic split by marketing campaign (the service's totals are exactly the sum of its campaigns), each with its own numbers, top_reasons and operators. For those, write campaign_overview: one to two sentences comparing the campaigns against each other - which are converting best and worst relative to the rest, and what in their reasons or operator/channel mix most likely explains the gap. Then, in campaigns, one sentence per campaign (keyed by its campaign_id, exactly as given) on how that campaign is doing and why. Refer to campaigns by campaign_name, never by ID. A campaign with much lower volume than the others can look artificially strong or weak - say so instead of ranking it. For a service with no `campaigns`, return an empty campaign_overview and an empty campaigns list.
+- placements and devices: some services (and campaigns) also carry `placements` - where the Google ad was shown: `by_type` splits mobile apps from websites, `top` lists the highest-volume individual placements (app placements are in Google's "mobileapp::<n>-<package name>" form) plus a rolled-up "(other placements)" row covering the long tail - and `devices`, split by phone brand plus "(other brands)". `tracked_resolved` is how much of the volume carries this information at all; when `covers_all_traffic` is false, say in the same sentence that the placement/device picture only covers part of the traffic, rather than presenting it as the full picture. Where a placement type, a specific placement or a device brand clearly converts better or worse than the rest on meaningful volume, work it into the summary (and into that campaign's sentence and the campaign_overview, for campaigns), and it can drive a recommendation - a placement that brings real volume but rarely converts is something the partner can exclude in their own campaign settings, unlike operator-side failures. Refer to an app placement by its package name (e.g. com.goguru.app), not the full Google string. When `placements`/`devices` are absent, or nothing in them stands out, don't mention them.
+
+Rules:
+- Never restate specific conversion percentages, counts, or figures in your text - those are shown to the partner separately, right next to your summary. This applies to daily and hourly figures too, not just the headline ones. Referring to categories ("insufficient balance", "one of the networks") or directional language ("improved", "worsened", "roughly doubled") is fine; restating "3.28%" or "1,401 of 42,684" is not.
+- Do not frame operator- or customer-side issues (insufficient balance, OTP timeout, an operator's own eligibility rules, "no active deposit flow") as the partner's fault - describe those as market/network conditions outside the partner's control, not something for them to fix on their end.
+- If total_resolved is under about 30, say plainly that the volume is too low to draw a real conclusion from, rather than treating a single-digit sample as a meaningful rate.
+
+--- user message ---
+{
+  "services": [
+    {
+      "product_id": 5290,
+      "product_name": "KidsFlix Monthly",
+      "country": "ZMB",
+      "provider": "pawapay",
+      "total_resolved": 9019,
+      "completed": 660,
+      "failed": 8359,
+      "conversion_rate_pct": 7.32,
+      "top_reasons": [
+        {
+          "reason": "The customer did not approve the payment. Either the customer did not enter their PIN in time or incorrect PIN was entered.",
+          "occurrences": 4598
+        },
+        {
+          "reason": "The customer does not have enough funds to complete the payment.",
+          "occurrences": 2225
+        },
+        {
+          "reason": "The correspondent is currently unavailable. Please check https://status.pawapay.cloud for details.",
+          "occurrences": 431
+        },
+        {
+          "reason": "The customer did not authorize the payment in time or the transaction timed out at the Mobile Network Operator",
+          "occurrences": 377
+        },
+        {
+          "reason": "The customer entered incorrect PIN to authorise the payment.",
+          "occurrences": 290
+        }
+      ],
+      "operators": [
+        {
+          "operator": "MTN_MOMO_ZMB",
+          "attempts": 1795,
+          "ok": 81
+        },
+        {
+          "operator": "AIRTEL_OAPI_ZMB",
+          "attempts": 6847,
+          "ok": 579
+        },
+        {
+          "operator": "ZAMTEL_ZMB",
+          "attempts": 246,
+          "ok": 0
+        }
+      ],
+      "daily": "date,total_resolved,completed,conversion_rate_pct\n2026-10-12,7356,526,7.15\n2026-10-13,1663,134,8.06",
+      "hourly": "hour,total_resolved,completed,conversion_rate_pct\n2026-10-12T00:00:00,461,36,7.81\n2026-10-12T01:00:00,344,22,6.4\n2026-10-12T02:00:00,182,14,7.69\n2026-10-12T03:00:00,90,3,3.33\n2026-10-12T04:00:00,65,8,12.31\n2026-10-12T05:00:00,64,4,6.25\n2026-10-12T06:00:00,41,1,2.44\n2026-10-12T07:00:00,118,11,9.32\n2026-10-12T08:00:00,299,3,1.0\n2026-10-12T09:00:00,305,17,5.57\n2026-10-12T10:00:00,290,24,8.28\n2026-10-12T11:00:00,372,37,9.95\n2026-10-12T12:00:00,327,26,7.95\n2026-10-12T13:00:00,350,28,8.0\n2026-10-12T14:00:00,376,40,10.64\n2026-10-12T15:00:00,356,29,8.15\n2026-10-12T16:00:00,423,43,10.17\n2026-10-12T17:00:00,399,23,5.76\n2026-10-12T18:00:00,424,30,7.08\n2026-10-12T19:00:00,439,28,6.38\n2026-10-12T20:00:00,344,23,6.69\n2026-10-12T21:00:00,455,28,6.15\n2026-10-12T22:00:00,409,20,4.89\n2026-10-12T23:00:00,423,28,6.62\n2026-10-13T00:00:00,444,31,6.98\n2026-10-13T01:00:00,357,24,6.72\n2026-10-13T02:00:00,150,16,10.67\n2026-10-13T03:00:00,101,9,8.91\n2026-10-13T04:00:00,64,4,6.25\n2026-10-13T05:00:00,43,1,2.33\n2026-10-13T06:00:00,48,4,8.33\n2026-10-13T07:00:00,105,15,14.29\n2026-10-13T08:00:00,191,16,8.38\n2026-10-13T09:00:00,160,14,8.75\n2026-10-13T10:00:00,0,0,0.0\n2026-10-13T11:00:00,0,0,0.0\n2026-10-13T12:00:00,0,0,0.0\n2026-10-13T13:00:00,0,0,0.0\n2026-10-13T14:00:00,0,0,0.0\n2026-10-13T15:00:00,0,0,0.0\n2026-10-13T16:00:00,0,0,0.0\n2026-10-13T17:00:00,0,0,0.0\n2026-10-13T18:00:00,0,0,0.0\n2026-10-13T19:00:00,0,0,0.0\n2026-10-13T20:00:00,0,0,0.0\n2026-10-13T21:00:00,0,0,0.0\n2026-10-13T22:00:00,0,0,0.0\n2026-10-13T23:00:00,0,0,0.0",
+      "placements": {
+        "tracked_resolved": 2924,
+        "by_type": [
+          {
+            "type": "mobile app",
+            "total_resolved": 2501,
+            "completed": 180,
+            "conversion_rate_pct": 7.2,
+            "count": 624
+          },
+          {
+            "type": "website",
+            "total_resolved": 423,
+            "completed": 25,
+            "conversion_rate_pct": 5.91,
+            "count": 154
+          }
+        ],
+        "top": [
+          {
+            "placement": "mobileapp::2-com.wetrackk.lt",
+            "total_resolved": 91,
+            "completed": 8,
+            "conversion_rate_pct": 8.79
+          },
+          {
+            "placement": "www.ecer.com",
+            "total_resolved": 60,
+            "completed": 3,
+            "conversion_rate_pct": 5.0
+          },
+          {
+            "placement": "mobileapp::2-open.chat.gpt.aichat.bot.free.app",
+            "total_resolved": 57,
+            "completed": 2,
+            "conversion_rate_pct": 3.51
+          },
+          {
+            "placement": "mobileapp::2-com.vita.track.health",
+            "total_resolved": 54,
+            "completed": 1,
+            "conversion_rate_pct": 1.85
+          },
+          {
+            "placement": "mobileapp::2-com.fbvideodownloader.downloadfbvideos",
+            "total_resolved": 51,
+            "completed": 1,
+            "conversion_rate_pct": 1.96
+          },
+          {
+            "placement": "mobileapp::2-videoplayer.videodownloader.downloader",
+            "total_resolved": 48,
+            "completed": 3,
+            "conversion_rate_pct": 6.25
+          },
+          {
+            "placement": "mobileapp::2-pdf.pdfreader.viewer.editor.free",
+            "total_resolved": 39,
+            "completed": 3,
+            "conversion_rate_pct": 7.69
+          },
+          {
+            "placement": "mobileapp::2-com.nxl.aienglishtutor.ailearnlanguage.aichatbot",
+            "total_resolved": 39,
+            "completed": 2,
+            "conversion_rate_pct": 5.13
+          },
+          {
+            "placement": "mobileapp::2-com.merryblue.facebookvideodownloader",
+            "total_resolved": 39,
+            "completed": 1,
+            "conversion_rate_pct": 2.56
+          },
+          {
+            "placement": "mobileapp::2-whatsap.stuar.sittus",
+            "total_resolved": 37,
+            "completed": 1,
+            "conversion_rate_pct": 2.7
+          },
+          {
+            "placement": "(other placements)",
+            "total_resolved": 2409,
+            "completed": 180,
+            "conversion_rate_pct": 7.47,
+            "count": 768
+          }
+        ],
+        "covers_all_traffic": false
+      },
+      "devices": {
+        "tracked_resolved": 2876,
+        "by_brand": [
+          {
+            "brand": "tecno",
+            "total_resolved": 899,
+            "completed": 56,
+            "conversion_rate_pct": 6.23
+          },
+          {
+            "brand": "samsung",
+            "total_resolved": 615,
+            "completed": 51,
+            "conversion_rate_pct": 8.29
+          },
+          {
+            "brand": "infinix",
+            "total_resolved": 505,
+            "completed": 37,
+            "conversion_rate_pct": 7.33
+          },
+          {
+            "brand": "itel",
+            "total_resolved": 321,
+            "completed": 24,
+            "conversion_rate_pct": 7.48
+          },
+          {
+            "brand": "android",
+            "total_resolved": 167,
+            "completed": 7,
+            "conversion_rate_pct": 4.19
+          },
+          {
+            "brand": "huawei",
+            "total_resolved": 82,
+            "completed": 5,
+            "conversion_rate_pct": 6.1
+          },
+          {
+            "brand": "google",
+            "total_resolved": 44,
+            "completed": 5,
+            "conversion_rate_pct": 11.36
+          },
+          {
+            "brand": "xiaomi",
+            "total_resolved": 40,
+            "completed": 1,
+            "conversion_rate_pct": 2.5
+          },
+          {
+            "brand": "(other brands)",
+            "total_resolved": 203,
+            "completed": 15,
+            "conversion_rate_pct": 7.39,
+            "count": 24
+          }
+        ],
+        "covers_all_traffic": false
+      },
+      "campaigns": [
+        {
+          "campaign_id": "HbDnGOiytpqHfNwTO6AD",
+          "campaign_name": "Wallet-OD-V2-ZMB-KF-1",
+          "total_resolved": 3842,
+          "completed": 275,
+          "conversion_rate_pct": 7.16,
+          "top_reasons": [
+            {
+              "reason": "The customer did not approve the payment. Either the customer did not enter their PIN in time or incorrect PIN was entered.",
+              "occurrences": 1658
+            },
+            {
+              "reason": "The customer does not have enough funds to complete the payment.",
+              "occurrences": 1197
+            },
+            {
+              "reason": "The customer did not authorize the payment in time or the transaction timed out at the Mobile Network Operator",
+              "occurrences": 234
+            }
+          ],
+          "operators": [
+            {
+              "operator": "AIRTEL_OAPI_ZMB",
+              "attempts": 2562,
+              "ok": 227
+            },
+            {
+              "operator": "MTN_MOMO_ZMB",
+              "attempts": 1122,
+              "ok": 48
+            },
+            {
+              "operator": "ZAMTEL_ZMB",
+              "attempts": 93,
+              "ok": 0
+            }
+          ],
+          "placements": {
+            "tracked_resolved": 1216,
+            "by_type": [
+              {
+                "type": "mobile app",
+                "total_resolved": 936,
+                "completed": 68,
+                "conversion_rate_pct": 7.26,
+                "count": 322
+              },
+              {
+                "type": "website",
+                "total_resolved": 280,
+                "completed": 16,
+                "conversion_rate_pct": 5.71,
+                "count": 102
+              }
+            ],
+            "top": [
+              {
+                "placement": "www.ecer.com",
+                "total_resolved": 60,
+                "completed": 3,
+                "conversion_rate_pct": 5.0
+              },
+              {
+                "placement": "mobileapp::2-com.wetrackk.lt",
+                "total_resolved": 33,
+                "completed": 1,
+                "conversion_rate_pct": 3.03
+              },
+              {
+                "placement": "mobileapp::2-com.dramarush.bingeshort",
+                "total_resolved": 30,
+                "completed": 1,
+                "conversion_rate_pct": 3.33
+              },
+              {
+                "placement": "(other placements)",
+                "total_resolved": 1093,
+                "completed": 79,
+                "conversion_rate_pct": 7.23,
+                "count": 421
+              }
+            ],
+            "covers_all_traffic": false
+          },
+          "devices": {
+            "tracked_resolved": 1168,
+            "by_brand": [
+              {
+                "brand": "tecno",
+                "total_resolved": 379,
+                "completed": 31,
+                "conversion_rate_pct": 8.18
+              },
+              {
+                "brand": "infinix",
+                "total_resolved": 238,
+                "completed": 19,
+                "conversion_rate_pct": 7.98
+              },
+              {
+                "brand": "itel",
+                "total_resolved": 157,
+                "completed": 10,
+                "conversion_rate_pct": 6.37
+              },
+              {
+                "brand": "samsung",
+                "total_resolved": 157,
+                "completed": 10,
+                "conversion_rate_pct": 6.37
+              },
+              {
+                "brand": "android",
+                "total_resolved": 84,
+                "completed": 2,
+                "conversion_rate_pct": 2.38
+              },
+              {
+                "brand": "xiaomi",
+                "total_resolved": 22,
+                "completed": 0,
+                "conversion_rate_pct": 0.0
+              },
+              {
+                "brand": "huawei",
+                "total_resolved": 21,
+                "completed": 1,
+                "conversion_rate_pct": 4.76
+              },
+              {
+                "brand": "apple",
+                "total_resolved": 19,
+                "completed": 2,
+                "conversion_rate_pct": 10.53
+              },
+              {
+                "brand": "(other brands)",
+                "total_resolved": 91,
+                "completed": 5,
+                "conversion_rate_pct": 5.49,
+                "count": 16
+              }
+            ],
+            "covers_all_traffic": false
+          }
+        },
+        {
+          "campaign_id": "UvPMMgS5CLykqt3xhBkV",
+          "campaign_name": "Zambia Hybrid Minime-kidsflix- 5243/7013-DG",
+          "total_resolved": 2975,
+          "completed": 221,
+          "conversion_rate_pct": 7.43,
+          "top_reasons": [
+            {
+              "reason": "The customer did not approve the payment. Either the customer did not enter their PIN in time or incorrect PIN was entered.",
+              "occurrences": 1928
+            },
+            {
+              "reason": "The customer does not have enough funds to complete the payment.",
+              "occurrences": 377
+            },
+            {
+              "reason": "The correspondent is currently unavailable. Please check https://status.pawapay.cloud for details.",
+              "occurrences": 180
+            }
+          ],
+          "operators": [
+            {
+              "operator": "AIRTEL_OAPI_ZMB",
+              "attempts": 2716,
+              "ok": 213
+            },
+            {
+              "operator": "MTN_MOMO_ZMB",
+              "attempts": 143,
+              "ok": 8
+            },
+            {
+              "operator": "ZAMTEL_ZMB",
+              "attempts": 95,
+              "ok": 0
+            }
+          ],
+          "placements": {
+            "tracked_resolved": 1654,
+            "by_type": [
+              {
+                "type": "mobile app",
+                "total_resolved": 1533,
+                "completed": 112,
+                "conversion_rate_pct": 7.31,
+                "count": 398
+              },
+              {
+                "type": "website",
+                "total_resolved": 121,
+                "completed": 7,
+                "conversion_rate_pct": 5.79,
+                "count": 45
+              }
+            ],
+            "top": [
+              {
+                "placement": "mobileapp::2-com.wetrackk.lt",
+                "total_resolved": 58,
+                "completed": 7,
+                "conversion_rate_pct": 12.07
+              },
+              {
+                "placement": "mobileapp::2-open.chat.gpt.aichat.bot.free.app",
+                "total_resolved": 46,
+                "completed": 2,
+                "conversion_rate_pct": 4.35
+              },
+              {
+                "placement": "mobileapp::2-com.fbvideodownloader.downloadfbvideos",
+                "total_resolved": 41,
+                "completed": 1,
+                "conversion_rate_pct": 2.44
+              },
+              {
+                "placement": "mobileapp::2-com.vita.track.health",
+                "total_resolved": 40,
+                "completed": 1,
+                "conversion_rate_pct": 2.5
+              },
+              {
+                "placement": "mobileapp::2-videoplayer.videodownloader.downloader",
+                "total_resolved": 35,
+                "completed": 2,
+                "conversion_rate_pct": 5.71
+              },
+              {
+                "placement": "mobileapp::2-com.merryblue.facebookvideodownloader",
+                "total_resolved": 34,
+                "completed": 1,
+                "conversion_rate_pct": 2.94
+              },
+              {
+                "placement": "mobileapp::2-com.nxl.aienglishtutor.ailearnlanguage.aichatbot",
+                "total_resolved": 32,
+                "completed": 1,
+                "conversion_rate_pct": 3.12
+              },
+              {
+                "placement": "mobileapp::2-whatsap.stuar.sittus",
+                "total_resolved": 31,
+                "completed": 1,
+                "conversion_rate_pct": 3.23
+              },
+              {
+                "placement": "mobileapp::2-pdfscanner.scan.pdf.scanner.free",
+                "total_resolved": 30,
+                "completed": 4,
+                "conversion_rate_pct": 13.33
+              },
+              {
+                "placement": "static.phxfeeds.com",
+                "total_resolved": 30,
+                "completed": 0,
+                "conversion_rate_pct": 0.0
+              },
+              {
+                "placement": "(other placements)",
+                "total_resolved": 1277,
+                "completed": 99,
+                "conversion_rate_pct": 7.75,
+                "count": 433
+              }
+            ],
+            "covers_all_traffic": false
+          },
+          "devices": {
+            "tracked_resolved": 1654,
+            "by_brand": [
+              {
+                "brand": "tecno",
+                "total_resolved": 508,
+                "completed": 25,
+                "conversion_rate_pct": 4.92
+              },
+              {
+                "brand": "samsung",
+                "total_resolved": 440,
+                "completed": 39,
+                "conversion_rate_pct": 8.86
+              },
+              {
+                "brand": "infinix",
+                "total_resolved": 264,
+                "completed": 18,
+                "conversion_rate_pct": 6.82
+              },
+              {
+                "brand": "itel",
+                "total_resolved": 161,
+                "completed": 14,
+                "conversion_rate_pct": 8.7
+              },
+              {
+                "brand": "android",
+                "total_resolved": 77,
+                "completed": 5,
+                "conversion_rate_pct": 6.49
+              },
+              {
+                "brand": "huawei",
+                "total_resolved": 58,
+                "completed": 4,
+                "conversion_rate_pct": 6.9
+              },
+              {
+                "brand": "google",
+                "total_resolved": 27,
+                "completed": 3,
+                "conversion_rate_pct": 11.11
+              },
+              {
+                "brand": "xiaomi",
+                "total_resolved": 18,
+                "completed": 1,
+                "conversion_rate_pct": 5.56
+              },
+              {
+                "brand": "(other brands)",
+                "total_resolved": 101,
+                "completed": 10,
+                "conversion_rate_pct": 9.9,
+                "count": 23
+              }
+            ],
+            "covers_all_traffic": false
+          }
+        },
+        {
+          "campaign_id": "fkfYl9lNcTJFSP6u5VZR",
+          "campaign_name": "Wallet-Mobi-V2-ZMB-KF-1",
+          "total_resolved": 2112,
+          "completed": 158,
+          "conversion_rate_pct": 7.48,
+          "top_reasons": [
+            {
+              "reason": "The customer did not approve the payment. Either the customer did not enter their PIN in time or incorrect PIN was entered.",
+              "occurrences": 965
+            },
+            {
+              "reason": "The customer does not have enough funds to complete the payment.",
+              "occurrences": 635
+            },
+            {
+              "reason": "The customer did not authorize the payment in time or the transaction timed out at the Mobile Network Operator",
+              "occurrences": 100
+            }
+          ],
+          "operators": [
+            {
+              "operator": "AIRTEL_OAPI_ZMB",
+              "attempts": 1513,
+              "ok": 136
+            },
+            {
+              "operator": "MTN_MOMO_ZMB",
+              "attempts": 505,
+              "ok": 22
+            },
+            {
+              "operator": "ZAMTEL_ZMB",
+              "attempts": 49,
+              "ok": 0
+            }
+          ]
+        },
+        {
+          "campaign_id": "BsLy4VuoZv6SsYu4iPX5",
+          "campaign_name": "Wallet-JD-V2-ZMB-KF-2",
+          "total_resolved": 90,
+          "completed": 6,
+          "conversion_rate_pct": 6.67,
+          "top_reasons": [
+            {
+              "reason": "The customer did not approve the payment. Either the customer did not enter their PIN in time or incorrect PIN was entered.",
+              "occurrences": 47
+            },
+            {
+              "reason": "The customer does not have enough funds to complete the payment.",
+              "occurrences": 16
+            },
+            {
+              "reason": "The correspondent is currently unavailable. Please check https://status.pawapay.cloud for details.",
+              "occurrences": 8
+            }
+          ],
+          "operators": [
+            {
+              "operator": "AIRTEL_OAPI_ZMB",
+              "attempts": 56,
+              "ok": 3
+            },
+            {
+              "operator": "MTN_MOMO_ZMB",
+              "attempts": 25,
+              "ok": 3
+            },
+            {
+              "operator": "ZAMTEL_ZMB",
+              "attempts": 9,
+              "ok": 0
+            }
+          ],
+          "placements": {
+            "tracked_resolved": 54,
+            "by_type": [
+              {
+                "type": "mobile app",
+                "total_resolved": 32,
+                "completed": 0,
+                "conversion_rate_pct": 0.0,
+                "count": 25
+              },
+              {
+                "type": "website",
+                "total_resolved": 22,
+                "completed": 2,
+                "conversion_rate_pct": 9.09,
+                "count": 16
+              }
+            ],
+            "top": [
+              {
+                "placement": "(other placements)",
+                "total_resolved": 54,
+                "completed": 2,
+                "conversion_rate_pct": 3.7,
+                "count": 41
+              }
+            ],
+            "covers_all_traffic": false
+          },
+          "devices": {
+            "tracked_resolved": 54,
+            "by_brand": [
+              {
+                "brand": "samsung",
+                "total_resolved": 18,
+                "completed": 2,
+                "conversion_rate_pct": 11.11
+              },
+              {
+                "brand": "tecno",
+                "total_resolved": 12,
+                "completed": 0,
+                "conversion_rate_pct": 0.0
+              },
+              {
+                "brand": "android",
+                "total_resolved": 6,
+                "completed": 0,
+                "conversion_rate_pct": 0.0
+              },
+              {
+                "brand": "infinix",
+                "total_resolved": 3,
+                "completed": 0,
+                "conversion_rate_pct": 0.0
+              },
+              {
+                "brand": "itel",
+                "total_resolved": 3,
+                "completed": 0,
+                "conversion_rate_pct": 0.0
+              },
+              {
+                "brand": "huawei",
+                "total_resolved": 3,
+                "completed": 0,
+                "conversion_rate_pct": 0.0
+              },
+              {
+                "brand": "google",
+                "total_resolved": 2,
+                "completed": 0,
+                "conversion_rate_pct": 0.0
+              },
+              {
+                "brand": "honor",
+                "total_resolved": 2,
+                "completed": 0,
+                "conversion_rate_pct": 0.0
+              },
+              {
+                "brand": "(other brands)",
+                "total_resolved": 5,
+                "completed": 0,
+                "conversion_rate_pct": 0.0,
+                "count": 4
+              }
+            ],
+            "covers_all_traffic": false
+          }
+        }
+      ]
+    }
+  ]
+}
+2026-10-13 11:16:36,823 INFO Claude response for cp_id=122:
+{"services": [{"product_id": 5290, "summary": "KidsFlix Monthly in Zambia converted at a low rate over the period, with the vast majority of failures coming from customers not approving the payment in time (or with the wrong PIN) and a large secondary chunk from insufficient funds - both market-side frictions rather than anything on the integration itself. Airtel carried the bulk of volume and produced most of the completions, while MTN converted far worse despite meaningful volume, and Zamtel failed outright across all of its attempts. Traffic was heavily concentrated on October 12, which ran slightly behind the shorter October 13; within October 12 the overnight and early-morning hours were thin and choppy, with one early-morning hour showing a brief, low-volume spike in conversion that isn't meaningful on its own. October 13 cuts off abruptly after mid-morning, reflecting a partial day of data rather than a real drop in demand.", "recommendations": ["Investigate why Zamtel is converting at essentially zero - this looks like a channel worth pausing or deprioritizing until correspondent-side issues are resolved.", "MTN is converting well below Airtel despite comparable attempt volume in places; consider whether MTN customers are being routed into a weaker authorization flow or face longer PIN-entry windows.", "Within tracked placements, apps like com.vita.track.health, com.fbvideodownloader.downloadfbvideos, com.merryblue.facebookvideodownloader and whatsap.stuar.sittus bring real volume but convert far below the mobile-app average - worth excluding or deprioritizing these in campaign targeting."], "notable_days": [], "notable_hours": [], "campaign_overview": "Wallet-Mobi-V2-ZMB-KF-1 and the Zambia Hybrid Minime campaign converted modestly better than Wallet-OD-V2-ZMB-KF-1, though all three sit in a similar range and share the same underlying mix of unapproved payments and insufficient funds; Wallet-JD-V2-ZMB-KF-2's volume is too low to read as a real signal. Differences across the larger campaigns track mostly with how much of their traffic leaned on Airtel versus MTN, since Airtel consistently outperformed MTN wherever both appeared.", "campaigns": [{"campaign_id": "HbDnGOiytpqHfNwTO6AD", "summary": "Wallet-OD-V2-ZMB-KF-1 posted the weakest conversion of the larger campaigns, consistent with it carrying the heaviest MTN exposure relative to Airtel among the group, alongside the same customer-approval and insufficient-funds pattern seen service-wide."}, {"campaign_id": "UvPMMgS5CLykqt3xhBkV", "summary": "The Zambia Hybrid Minime campaign converted slightly better than average, helped by being almost entirely routed through the stronger-performing Airtel channel rather than MTN."}, {"campaign_id": "fkfYl9lNcTJFSP6u5VZR", "summary": "Wallet-Mobi-V2-ZMB-KF-1 had the best conversion among the larger campaigns, again tracking with a heavier skew toward Airtel over MTN, though it still faces the same approval and balance-driven failures as the rest."}, {"campaign_id": "BsLy4VuoZv6SsYu4iPX5", "summary": "Wallet-JD-V2-ZMB-KF-2's volume is too low to draw a real conclusion from, despite showing the same failure reasons as the larger campaigns."}]}]}

@@ -74,6 +74,35 @@ the same as at product level. `campaign_name` can be `null`: either the
 campaign has no name stored, or `campaign_id` is `null` too, meaning
 traffic with no campaign. Fall back to `campaign_id` for display.
 
+Every product, and every entry in `campaigns`, also carries `placements`
+and `devices`. These come from the Google Ads click and are `null` when
+none of that traffic has the value. Capture started on 12 Oct 2026, so
+older ranges are `null` everywhere.
+
+```json
+"placements": {
+  "tracked_resolved": 10216,
+  "by_type": [ { "type": "mobile app", "total_resolved": 8697, "completed": 263, "conversion_rate_pct": 3.02, "count": 1185 },
+               { "type": "website",    "total_resolved": 1519, "completed": 28,  "conversion_rate_pct": 1.84, "count": 433 } ],
+  "top": [ { "placement": "mobileapp::2-com.gpstracker.misky.phone", "total_resolved": 288, "completed": 14, "conversion_rate_pct": 4.86 },
+           { "placement": "(other placements)", "total_resolved": 8473, "completed": 241, "conversion_rate_pct": 2.84, "count": 1608 } ]
+},
+"devices": {
+  "tracked_resolved": 10159,
+  "by_brand": [ { "brand": "tecno", "total_resolved": 3419, "completed": 96, "conversion_rate_pct": 2.81 },
+                { "brand": "(other brands)", "...": "..." } ]
+}
+```
+
+- `tracked_resolved` is how much of the unit's `total_resolved` has the value
+  at all. Show it as coverage when it's lower.
+- `top` lists up to 10 placements with at least 30 resolved each. Everything
+  else is in the final `(other placements)` row, where `count` is how many
+  placements that row covers.
+- `by_brand` lists the top 8 device brands (the part of `device` before `+`)
+  plus `(other brands)`.
+- `by_type`, `top` and `by_brand` each add up to `tracked_resolved`.
+
 `campaign` is `null` unless `campaign_id` was sent, in which case it is
 `{"campaign_id": "...", "campaign_name": "..."}` and every number in the
 response covers that campaign only. Display `campaign_name`.

@@ -30,7 +30,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from auth import authenticate, get_role, resolve_cp_product_ids, AuthError
 from config import MAX_DATE_RANGE_DAYS, MAX_QUESTIONS_PER_SESSION, ALLOWED_ORIGINS
-from extract import fetch_all, get_campaign_name, fetch_campaign_breakdown
+from extract import fetch_all, get_campaign_name, fetch_campaign_breakdown, fetch_segment_breakdown
 from providers import PROVIDER_RULES
 from rollup import rollup_by_partner
 from analyze import analyze_partner
@@ -157,12 +157,15 @@ def create_summary(request: SummaryRequest, authorization: str = Header(...)):
     # Whole-product request: also split each product by campaign, for
     # products running more than one. A campaign request is already one
     # campaign, so there is nothing to split.
+    provider_by_product = {m["product_id"]: m["provider"] for m in product_metrics}
     campaigns_by_product = {}
     if campaign is None:
-        campaigns_by_product = fetch_campaign_breakdown(
-            day_start, day_end, cp_product_ids,
-            {m["product_id"]: m["provider"] for m in product_metrics},
-        )
+        campaigns_by_product = fetch_campaign_breakdown(day_start, day_end, cp_product_ids, provider_by_product)
+
+    # Placement/device splits for every product and every campaign
+    # (narrowed to the requested campaign, if any).
+    segments = fetch_segment_breakdown(day_start, day_end, cp_product_ids, provider_by_product, request.campaign_id)
+    no_segments = {"placements": None, "devices": None}
 
     digests = rollup_by_partner(
         product_metrics, reason_breakdown, operator_breakdown,
@@ -178,6 +181,9 @@ def create_summary(request: SummaryRequest, authorization: str = Header(...)):
             if campaign is not None:
                 service.update(campaign)
             service["campaigns"] = campaigns_by_product.get(service["product_id"], [])
+            service.update(segments["by_product"].get(service["product_id"], no_segments))
+            for c in service["campaigns"]:
+                c.update(segments["by_campaign"].get((service["product_id"], c["campaign_id"]), no_segments))
         analyze_partner(digest)
         log_message(
             source="dashboard_summary", role="assistant", session_id=session_id,
@@ -227,6 +233,8 @@ def create_summary(request: SummaryRequest, authorization: str = Header(...)):
                 ] if include_hourly else None,
             }
             product[comparison_label + "s"] = _comparison_entries(service.get("operators", []), comparison_label)
+            product["placements"] = service.get("placements")
+            product["devices"] = service.get("devices")
             product["campaign_overview"] = service.get("campaign_overview", "")
             product["campaigns"] = [
                 {
@@ -238,6 +246,8 @@ def create_summary(request: SummaryRequest, authorization: str = Header(...)):
                     "summary": c.get("summary", ""),
                     "reasons": [{"reason": r["reason_code"], "occurrences": r["occurrences"]} for r in c["reasons"]],
                     comparison_label + "s": _comparison_entries(c["operators"], comparison_label),
+                    "placements": c.get("placements"),
+                    "devices": c.get("devices"),
                 }
                 for c in service.get("campaigns", [])
             ]

@@ -35,6 +35,15 @@ SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
 SMTP_USER = os.environ.get("SMTP_USER")
 SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD")
 SMTP_FROM = os.environ.get("SMTP_FROM", "noreply@dtpay.example")
+# email_sender.py reads this dict - it was dropped in the Redis change
+# (cd8dd8d), which left main.py failing on import.
+SMTP_CONFIG = {
+    "host": SMTP_HOST or "localhost",
+    "port": SMTP_PORT,
+    "user": SMTP_USER,
+    "password": SMTP_PASSWORD,
+    "from_address": SMTP_FROM,
+}
 
 REVIEW_MODE = os.environ.get("REVIEW_MODE", "true").lower() == "true"
 REVIEW_OUTPUT_DIR = os.environ.get("REVIEW_OUTPUT_DIR", "./review_output")

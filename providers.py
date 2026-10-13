@@ -271,6 +271,18 @@ def classify_payout_campaign_counts(rows):
                                 success_key="payout_success_statuses", excluded_key="payout_excluded_statuses")
 
 
+def classify_segment_counts(rows, field):
+    """Legacy, payment_transactions-based - per (product_id, <field>),
+    for any extra breakdown axis (placement, device brand, ...)."""
+    return _classify_by_period(rows, field)
+
+
+def classify_payout_segment_counts(rows, field):
+    """New, payout_logs-based - per (product_id, <field>)."""
+    return _classify_by_period(rows, field, status_field="status",
+                                success_key="payout_success_statuses", excluded_key="payout_excluded_statuses")
+
+
 def filter_reason_rows(rows):
     """
     Legacy path: drops payment_transactions rows whose status is

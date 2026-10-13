@@ -1,1641 +1,1606 @@
 {
-    "session_id": "2108b6fe-dfb6-4bac-b782-c74dbb641de5",
+    "session_id": "7218219a-66dc-468e-840d-3b1f5a181843",
     "date_range": {
-        "start": "2026-10-04",
-        "end": "2026-10-10"
+        "start": "2026-10-07",
+        "end": "2026-10-13"
     },
     "campaign": {
-        "campaign_id": "xytTB2ulm5OxH2AcGttG",
-        "campaign_name": "Wallet-JD-V2-DRC-KF-2"
+        "campaign_id": "2qwSdGHocjyJVA3Sne3l",
+        "campaign_name": "Wallet-JD-V2-UG-KF-DGen-2"
     },
     "overall": {
-        "total_resolved": 18083,
-        "completed": 636,
-        "conversion_rate_pct": 3.52
+        "total_resolved": 13495,
+        "completed": 373,
+        "conversion_rate_pct": 2.76
     },
     "products": [
         {
-            "product_id": 5277,
+            "product_id": 5293,
             "product_name": "KidsFlix",
-            "country": "COD",
+            "country": "Uganda",
             "provider": "DTPay",
             "cp_id": 122,
             "partner_name": "Digital Technology",
-            "total_resolved": 18083,
-            "completed": 636,
-            "conversion_rate_pct": 3.52,
-            "summary": "KidsFlix transactions in the Democratic Republic of the Congo through DTPay are converting at a weak rate overall, with failures dominated by customers not approving the payment in time, authorization timeouts, and a large share of unresolved or unknown failures - all signs of friction on the mobile money authorization step rather than anything on the partner's side. Insufficient balance also accounts for a meaningful chunk of failures, again a customer-side funding issue outside the partner's control. Across the operators, Airtel and Vodacom M-Pesa carry the bulk of volume with Orange lagging behind in conversion, though all three show the same underlying approval-timeout pattern. Day to day the rate holds fairly steady in the low-to-mid single digits with no single day standing out sharply, and within each day conversion tends to be stronger in the morning hours and softer overnight and in the evening peak-volume hours, consistent with customers being less responsive to PIN prompts late at night.",
+            "total_resolved": 13495,
+            "completed": 373,
+            "conversion_rate_pct": 2.76,
+            "summary": "KidsFlix's Uganda traffic through DTPay converted at a low rate over the week, weighed down overwhelmingly by customers lacking sufficient funds or hitting payment limits, which together with an unspecified failure reason and authorization timeouts accounted for the vast majority of failed attempts. MTN handled roughly two-thirds of the volume but converted at a noticeably lower rate than Airtel, suggesting MTN wallets in Uganda are seeing tougher conditions right now. The daily pattern was fairly steady across the first six days with no single day standing out sharply, before October 13 cut off mid-day with a much smaller volume as the period ended. Within the day, conversion tended to be stronger in the early-morning low-volume hours and softer during the high-traffic evening peak, though nothing in the hourly data rises to a sharp, isolated spike or crash. On tracked placements, the mobile app placement for a step-reward app converted noticeably better than the broader mix, while a mirroring/cast app placement lagged behind it on comparable volume.",
             "recommendations": [
-                "Shorten or re-prompt the PIN authorization window, since a large share of failures are customers not approving in time or timing out on authorization rather than outright declines.",
-                "Investigate the Orange_COD channel specifically, since it converts noticeably lower than Airtel and Vodacom M-Pesa despite similar failure patterns.",
-                "Consider surfacing a balance-check or top-up nudge before initiating payment, given how often insufficient funds appears as a failure reason."
+                "Treat the high share of insufficient-funds/limit-reached failures as a market-side funding constraint rather than a platform issue - consider timing retry prompts or reminders around typical mobile money top-up patterns.",
+                "Investigate MTN's comparatively weaker conversion versus Airtel in Uganda; if this persists, consider surfacing Airtel as the more reliable option at checkout for Ugandan users.",
+                "Review whether the com.mirroring.app.casttv placement is worth keeping in the campaign given its below-average conversion on meaningful volume, compared to better-performing placements like the step-reward app."
             ],
             "notable_days": [],
             "notable_hours": [],
             "reasons": [
                 {
-                    "reason": "The customer did not approve the payment. Either the customer did not enter their PIN in time or incorrect PIN was entered.",
-                    "occurrences": 5776
+                    "reason": "The payment failed due to an unknown reason.",
+                    "occurrences": 2775
+                },
+                {
+                    "reason": "The customer does not have enough funds to complete the payment or has reached a payment limit.",
+                    "occurrences": 7238
+                },
+                {
+                    "reason": "The customer did not authorize the payment in time or the transaction timed out at the Mobile Network Operator",
+                    "occurrences": 1575
                 },
                 {
                     "reason": "The customer does not have enough funds to complete the payment.",
-                    "occurrences": 2613
-                },
-                {
-                    "reason": "Authorization not approved in time.",
-                    "occurrences": 3485
-                },
-                {
-                    "reason": "The payment failed due to an unknown reason.",
-                    "occurrences": 3884
-                },
-                {
-                    "reason": "The customer entered incorrect PIN to authorise the payment.",
-                    "occurrences": 774
-                },
-                {
-                    "reason": "Blocked-UNKNOWN_REASON",
-                    "occurrences": 411
-                },
-                {
-                    "reason": "The phone number does not have a mobile money wallet or does not belong to the telco.",
-                    "occurrences": 131
+                    "occurrences": 782
                 },
                 {
                     "reason": "Blocked-INSUFFICIENT_BALANCE_FALLBACK",
-                    "occurrences": 83
+                    "occurrences": 65
+                },
+                {
+                    "reason": "The customer entered incorrect PIN to authorise the payment.",
+                    "occurrences": 186
+                },
+                {
+                    "reason": "The MSISDN is too short for the identified country UGA",
+                    "occurrences": 12
+                },
+                {
+                    "reason": "The phone number does not have a mobile money wallet or does not belong to the telco.",
+                    "occurrences": 346
+                },
+                {
+                    "reason": "Blocked-UNKNOWN_REASON",
+                    "occurrences": 27
                 },
                 {
                     "reason": "The customers mobile money wallet is locked.",
-                    "occurrences": 31
+                    "occurrences": 18
                 },
                 {
-                    "reason": "The MSISDN is too short for the identified country COD",
-                    "occurrences": 50
+                    "reason": "API Call Failure",
+                    "occurrences": 2
                 },
                 {
-                    "reason": "The MSISDN is too long for the identified country COD",
-                    "occurrences": 3
-                },
-                {
-                    "reason": "The correspondent is currently unavailable. Please check https://status.DTPay.cloud for details.",
-                    "occurrences": 89
+                    "reason": "ACCEPTED",
+                    "occurrences": 12
                 },
                 {
                     "reason": "Blocked-WALLET_LOCKED",
                     "occurrences": 10
                 },
                 {
-                    "reason": "The customer has reached the maximum number of payments they can make in a day.",
-                    "occurrences": 3
+                    "reason": "The MSISDN is too long for the identified country UGA",
+                    "occurrences": 6
                 },
                 {
-                    "reason": "API Call Failure",
-                    "occurrences": 8
+                    "reason": "The correspondent is currently unavailable. Please check https://status.DTPay.cloud for details.",
+                    "occurrences": 54
                 },
                 {
-                    "reason": "ACCEPTED",
-                    "occurrences": 91
+                    "reason": "Invalid MSISDN for the identified country UGA",
+                    "occurrences": 9
+                },
+                {
+                    "reason": "The customer did not approve the payment. Either the customer did not enter their PIN in time or incorrect PIN was entered.",
+                    "occurrences": 4
                 },
                 {
                     "reason": "Internal Error",
-                    "occurrences": 5
+                    "occurrences": 1
                 }
             ],
             "daily": [
                 {
-                    "date": "2026-10-04",
-                    "total_resolved": 2749,
-                    "completed": 99,
-                    "conversion_rate_pct": 3.6,
-                    "reasons": [
-                        {
-                            "reason": "The customer did not approve the payment. Either the customer did not enter their PIN in time or incorrect PIN was entered.",
-                            "occurrences": 788
-                        },
-                        {
-                            "reason": "The customer does not have enough funds to complete the payment.",
-                            "occurrences": 382
-                        },
-                        {
-                            "reason": "Authorization not approved in time.",
-                            "occurrences": 528
-                        },
-                        {
-                            "reason": "The payment failed due to an unknown reason.",
-                            "occurrences": 648
-                        },
-                        {
-                            "reason": "The customer entered incorrect PIN to authorise the payment.",
-                            "occurrences": 143
-                        },
-                        {
-                            "reason": "Blocked-UNKNOWN_REASON",
-                            "occurrences": 72
-                        },
-                        {
-                            "reason": "The phone number does not have a mobile money wallet or does not belong to the telco.",
-                            "occurrences": 14
-                        },
-                        {
-                            "reason": "Blocked-INSUFFICIENT_BALANCE_FALLBACK",
-                            "occurrences": 9
-                        },
-                        {
-                            "reason": "The customers mobile money wallet is locked.",
-                            "occurrences": 4
-                        },
-                        {
-                            "reason": "The MSISDN is too short for the identified country COD",
-                            "occurrences": 8
-                        },
-                        {
-                            "reason": "The MSISDN is too long for the identified country COD",
-                            "occurrences": 1
-                        },
-                        {
-                            "reason": "The correspondent is currently unavailable. Please check https://status.DTPay.cloud for details.",
-                            "occurrences": 52
-                        },
-                        {
-                            "reason": "Blocked-WALLET_LOCKED",
-                            "occurrences": 1
-                        }
-                    ],
-                    "operators": [
-                        {
-                            "operator": "AIRTEL_COD",
-                            "attempts": 1251,
-                            "ok": 64
-                        },
-                        {
-                            "operator": "VODACOM_MPESA_COD",
-                            "attempts": 796,
-                            "ok": 27
-                        },
-                        {
-                            "operator": "ORANGE_COD",
-                            "attempts": 620,
-                            "ok": 8
-                        }
-                    ]
-                },
-                {
-                    "date": "2026-10-05",
-                    "total_resolved": 3523,
-                    "completed": 98,
-                    "conversion_rate_pct": 2.78,
-                    "reasons": [
-                        {
-                            "reason": "The customer did not approve the payment. Either the customer did not enter their PIN in time or incorrect PIN was entered.",
-                            "occurrences": 1128
-                        },
-                        {
-                            "reason": "Authorization not approved in time.",
-                            "occurrences": 673
-                        },
-                        {
-                            "reason": "The customer does not have enough funds to complete the payment.",
-                            "occurrences": 542
-                        },
-                        {
-                            "reason": "The MSISDN is too short for the identified country COD",
-                            "occurrences": 5
-                        },
-                        {
-                            "reason": "The payment failed due to an unknown reason.",
-                            "occurrences": 778
-                        },
-                        {
-                            "reason": "Blocked-UNKNOWN_REASON",
-                            "occurrences": 82
-                        },
-                        {
-                            "reason": "The customer entered incorrect PIN to authorise the payment.",
-                            "occurrences": 148
-                        },
-                        {
-                            "reason": "The customer has reached the maximum number of payments they can make in a day.",
-                            "occurrences": 3
-                        },
-                        {
-                            "reason": "Blocked-INSUFFICIENT_BALANCE_FALLBACK",
-                            "occurrences": 15
-                        },
-                        {
-                            "reason": "The customers mobile money wallet is locked.",
-                            "occurrences": 13
-                        },
-                        {
-                            "reason": "Blocked-WALLET_LOCKED",
-                            "occurrences": 5
-                        },
-                        {
-                            "reason": "The phone number does not have a mobile money wallet or does not belong to the telco.",
-                            "occurrences": 31
-                        },
-                        {
-                            "reason": "The MSISDN is too long for the identified country COD",
-                            "occurrences": 2
-                        }
-                    ],
-                    "operators": [
-                        {
-                            "operator": "AIRTEL_COD",
-                            "attempts": 1767,
-                            "ok": 62
-                        },
-                        {
-                            "operator": "VODACOM_MPESA_COD",
-                            "attempts": 1036,
-                            "ok": 19
-                        },
-                        {
-                            "operator": "ORANGE_COD",
-                            "attempts": 618,
-                            "ok": 17
-                        }
-                    ]
-                },
-                {
-                    "date": "2026-10-06",
-                    "total_resolved": 3140,
-                    "completed": 115,
-                    "conversion_rate_pct": 3.66,
+                    "date": "2026-10-07",
+                    "total_resolved": 1690,
+                    "completed": 51,
+                    "conversion_rate_pct": 3.02,
                     "reasons": [
                         {
                             "reason": "The payment failed due to an unknown reason.",
-                            "occurrences": 660
+                            "occurrences": 369
                         },
                         {
-                            "reason": "The customer did not approve the payment. Either the customer did not enter their PIN in time or incorrect PIN was entered.",
-                            "occurrences": 1099
+                            "reason": "The customer does not have enough funds to complete the payment or has reached a payment limit.",
+                            "occurrences": 826
+                        },
+                        {
+                            "reason": "The customer did not authorize the payment in time or the transaction timed out at the Mobile Network Operator",
+                            "occurrences": 237
                         },
                         {
                             "reason": "The customer does not have enough funds to complete the payment.",
-                            "occurrences": 468
-                        },
-                        {
-                            "reason": "Authorization not approved in time.",
-                            "occurrences": 538
-                        },
-                        {
-                            "reason": "The customer entered incorrect PIN to authorise the payment.",
-                            "occurrences": 115
-                        },
-                        {
-                            "reason": "Blocked-UNKNOWN_REASON",
-                            "occurrences": 60
-                        },
-                        {
-                            "reason": "The phone number does not have a mobile money wallet or does not belong to the telco.",
-                            "occurrences": 30
-                        },
-                        {
-                            "reason": "The MSISDN is too short for the identified country COD",
-                            "occurrences": 9
+                            "occurrences": 110
                         },
                         {
                             "reason": "Blocked-INSUFFICIENT_BALANCE_FALLBACK",
-                            "occurrences": 17
-                        },
-                        {
-                            "reason": "The customers mobile money wallet is locked.",
-                            "occurrences": 3
-                        },
-                        {
-                            "reason": "Blocked-WALLET_LOCKED",
-                            "occurrences": 2
-                        },
-                        {
-                            "reason": "The correspondent is currently unavailable. Please check https://status.DTPay.cloud for details.",
-                            "occurrences": 12
-                        },
-                        {
-                            "reason": "API Call Failure",
-                            "occurrences": 1
-                        },
-                        {
-                            "reason": "ACCEPTED",
                             "occurrences": 6
                         },
                         {
-                            "reason": "Internal Error",
-                            "occurrences": 5
-                        }
-                    ],
-                    "operators": [
-                        {
-                            "operator": "ORANGE_COD",
-                            "attempts": 566,
-                            "ok": 18
-                        },
-                        {
-                            "operator": "AIRTEL_COD",
-                            "attempts": 1661,
-                            "ok": 68
-                        },
-                        {
-                            "operator": "VODACOM_MPESA_COD",
-                            "attempts": 829,
-                            "ok": 29
-                        }
-                    ]
-                },
-                {
-                    "date": "2026-10-07",
-                    "total_resolved": 1828,
-                    "completed": 78,
-                    "conversion_rate_pct": 4.27,
-                    "reasons": [
-                        {
-                            "reason": "The payment failed due to an unknown reason.",
-                            "occurrences": 404
-                        },
-                        {
-                            "reason": "The customer does not have enough funds to complete the payment.",
-                            "occurrences": 255
-                        },
-                        {
-                            "reason": "The customer did not approve the payment. Either the customer did not enter their PIN in time or incorrect PIN was entered.",
-                            "occurrences": 560
-                        },
-                        {
-                            "reason": "Authorization not approved in time.",
-                            "occurrences": 389
-                        },
-                        {
-                            "reason": "The phone number does not have a mobile money wallet or does not belong to the telco.",
+                            "reason": "The customer entered incorrect PIN to authorise the payment.",
                             "occurrences": 11
                         },
                         {
-                            "reason": "The customer entered incorrect PIN to authorise the payment.",
-                            "occurrences": 70
+                            "reason": "The MSISDN is too short for the identified country UGA",
+                            "occurrences": 3
                         },
                         {
-                            "reason": "Blocked-UNKNOWN_REASON",
+                            "reason": "The phone number does not have a mobile money wallet or does not belong to the telco.",
                             "occurrences": 45
                         },
                         {
-                            "reason": "Blocked-INSUFFICIENT_BALANCE_FALLBACK",
-                            "occurrences": 5
+                            "reason": "Blocked-UNKNOWN_REASON",
+                            "occurrences": 12
                         },
                         {
-                            "reason": "The MSISDN is too short for the identified country COD",
-                            "occurrences": 5
+                            "reason": "The customers mobile money wallet is locked.",
+                            "occurrences": 2
                         },
                         {
                             "reason": "API Call Failure",
-                            "occurrences": 2
+                            "occurrences": 1
                         },
                         {
                             "reason": "ACCEPTED",
                             "occurrences": 2
                         },
                         {
-                            "reason": "The customers mobile money wallet is locked.",
+                            "reason": "Blocked-WALLET_LOCKED",
                             "occurrences": 2
+                        },
+                        {
+                            "reason": "The MSISDN is too long for the identified country UGA",
+                            "occurrences": 3
+                        },
+                        {
+                            "reason": "The correspondent is currently unavailable. Please check https://status.DTPay.cloud for details.",
+                            "occurrences": 10
                         }
                     ],
                     "operators": [
                         {
-                            "operator": "ORANGE_COD",
-                            "attempts": 340,
-                            "ok": 6
+                            "operator": "AIRTEL_OAPI_UGA",
+                            "attempts": 506,
+                            "ok": 18
                         },
                         {
-                            "operator": "VODACOM_MPESA_COD",
-                            "attempts": 561,
-                            "ok": 26
-                        },
-                        {
-                            "operator": "AIRTEL_COD",
-                            "attempts": 877,
-                            "ok": 46
+                            "operator": "MTN_MOMO_UGA",
+                            "attempts": 1164,
+                            "ok": 33
                         }
                     ]
                 },
                 {
                     "date": "2026-10-08",
-                    "total_resolved": 2051,
-                    "completed": 69,
-                    "conversion_rate_pct": 3.36,
+                    "total_resolved": 1934,
+                    "completed": 46,
+                    "conversion_rate_pct": 2.38,
                     "reasons": [
                         {
-                            "reason": "Authorization not approved in time.",
-                            "occurrences": 398
-                        },
-                        {
-                            "reason": "Blocked-UNKNOWN_REASON",
-                            "occurrences": 66
-                        },
-                        {
-                            "reason": "The customer did not approve the payment. Either the customer did not enter their PIN in time or incorrect PIN was entered.",
-                            "occurrences": 653
-                        },
-                        {
                             "reason": "The payment failed due to an unknown reason.",
-                            "occurrences": 435
+                            "occurrences": 393
+                        },
+                        {
+                            "reason": "The customer does not have enough funds to complete the payment or has reached a payment limit.",
+                            "occurrences": 1069
+                        },
+                        {
+                            "reason": "The phone number does not have a mobile money wallet or does not belong to the telco.",
+                            "occurrences": 67
+                        },
+                        {
+                            "reason": "The customer did not authorize the payment in time or the transaction timed out at the Mobile Network Operator",
+                            "occurrences": 220
                         },
                         {
                             "reason": "The customer does not have enough funds to complete the payment.",
-                            "occurrences": 292
-                        },
-                        {
-                            "reason": "The customer entered incorrect PIN to authorise the payment.",
-                            "occurrences": 87
+                            "occurrences": 101
                         },
                         {
                             "reason": "Blocked-INSUFFICIENT_BALANCE_FALLBACK",
                             "occurrences": 9
                         },
                         {
-                            "reason": "The MSISDN is too short for the identified country COD",
-                            "occurrences": 6
-                        },
-                        {
-                            "reason": "The phone number does not have a mobile money wallet or does not belong to the telco.",
-                            "occurrences": 7
-                        },
-                        {
-                            "reason": "The correspondent is currently unavailable. Please check https://status.DTPay.cloud for details.",
-                            "occurrences": 25
+                            "reason": "The customer entered incorrect PIN to authorise the payment.",
+                            "occurrences": 20
                         },
                         {
                             "reason": "The customers mobile money wallet is locked.",
-                            "occurrences": 1
+                            "occurrences": 4
                         },
                         {
-                            "reason": "API Call Failure",
-                            "occurrences": 3
+                            "reason": "Blocked-UNKNOWN_REASON",
+                            "occurrences": 5
                         }
                     ],
                     "operators": [
                         {
-                            "operator": "VODACOM_MPESA_COD",
-                            "attempts": 588,
-                            "ok": 22
+                            "operator": "AIRTEL_OAPI_UGA",
+                            "attempts": 536,
+                            "ok": 15
                         },
                         {
-                            "operator": "AIRTEL_COD",
-                            "attempts": 1026,
-                            "ok": 40
-                        },
-                        {
-                            "operator": "ORANGE_COD",
-                            "attempts": 362,
-                            "ok": 7
+                            "operator": "MTN_MOMO_UGA",
+                            "attempts": 1384,
+                            "ok": 31
                         }
                     ]
                 },
                 {
                     "date": "2026-10-09",
-                    "total_resolved": 2783,
-                    "completed": 100,
-                    "conversion_rate_pct": 3.59,
+                    "total_resolved": 2127,
+                    "completed": 60,
+                    "conversion_rate_pct": 2.82,
                     "reasons": [
                         {
-                            "reason": "The customer did not approve the payment. Either the customer did not enter their PIN in time or incorrect PIN was entered.",
-                            "occurrences": 906
+                            "reason": "The payment failed due to an unknown reason.",
+                            "occurrences": 409
                         },
                         {
-                            "reason": "Authorization not approved in time.",
-                            "occurrences": 545
+                            "reason": "The customer did not authorize the payment in time or the transaction timed out at the Mobile Network Operator",
+                            "occurrences": 239
                         },
                         {
                             "reason": "The customer does not have enough funds to complete the payment.",
-                            "occurrences": 411
+                            "occurrences": 115
                         },
                         {
-                            "reason": "The payment failed due to an unknown reason.",
-                            "occurrences": 584
-                        },
-                        {
-                            "reason": "Blocked-UNKNOWN_REASON",
-                            "occurrences": 61
+                            "reason": "The customer does not have enough funds to complete the payment or has reached a payment limit.",
+                            "occurrences": 1195
                         },
                         {
                             "reason": "The customer entered incorrect PIN to authorise the payment.",
-                            "occurrences": 118
+                            "occurrences": 39
                         },
                         {
                             "reason": "The phone number does not have a mobile money wallet or does not belong to the telco.",
-                            "occurrences": 28
+                            "occurrences": 50
+                        },
+                        {
+                            "reason": "Blocked-INSUFFICIENT_BALANCE_FALLBACK",
+                            "occurrences": 10
+                        },
+                        {
+                            "reason": "The customers mobile money wallet is locked.",
+                            "occurrences": 3
+                        },
+                        {
+                            "reason": "Blocked-UNKNOWN_REASON",
+                            "occurrences": 3
+                        },
+                        {
+                            "reason": "Invalid MSISDN for the identified country UGA",
+                            "occurrences": 2
+                        },
+                        {
+                            "reason": "Blocked-WALLET_LOCKED",
+                            "occurrences": 2
+                        }
+                    ],
+                    "operators": [
+                        {
+                            "operator": "AIRTEL_OAPI_UGA",
+                            "attempts": 581,
+                            "ok": 15
+                        },
+                        {
+                            "operator": "MTN_MOMO_UGA",
+                            "attempts": 1531,
+                            "ok": 45
+                        }
+                    ]
+                },
+                {
+                    "date": "2026-10-10",
+                    "total_resolved": 2725,
+                    "completed": 76,
+                    "conversion_rate_pct": 2.79,
+                    "reasons": [
+                        {
+                            "reason": "The customer does not have enough funds to complete the payment or has reached a payment limit.",
+                            "occurrences": 1511
+                        },
+                        {
+                            "reason": "The payment failed due to an unknown reason.",
+                            "occurrences": 541
+                        },
+                        {
+                            "reason": "The customer did not authorize the payment in time or the transaction timed out at the Mobile Network Operator",
+                            "occurrences": 349
+                        },
+                        {
+                            "reason": "The phone number does not have a mobile money wallet or does not belong to the telco.",
+                            "occurrences": 51
+                        },
+                        {
+                            "reason": "The customer does not have enough funds to complete the payment.",
+                            "occurrences": 144
                         },
                         {
                             "reason": "Blocked-INSUFFICIENT_BALANCE_FALLBACK",
                             "occurrences": 12
                         },
                         {
+                            "reason": "The customer entered incorrect PIN to authorise the payment.",
+                            "occurrences": 34
+                        },
+                        {
+                            "reason": "Invalid MSISDN for the identified country UGA",
+                            "occurrences": 2
+                        },
+                        {
+                            "reason": "The customers mobile money wallet is locked.",
+                            "occurrences": 3
+                        },
+                        {
+                            "reason": "Blocked-UNKNOWN_REASON",
+                            "occurrences": 1
+                        },
+                        {
+                            "reason": "The customer did not approve the payment. Either the customer did not enter their PIN in time or incorrect PIN was entered.",
+                            "occurrences": 1
+                        }
+                    ],
+                    "operators": [
+                        {
+                            "operator": "MTN_MOMO_UGA",
+                            "attempts": 1956,
+                            "ok": 46
+                        },
+                        {
+                            "operator": "AIRTEL_OAPI_UGA",
+                            "attempts": 756,
+                            "ok": 30
+                        }
+                    ]
+                },
+                {
+                    "date": "2026-10-11",
+                    "total_resolved": 2582,
+                    "completed": 62,
+                    "conversion_rate_pct": 2.4,
+                    "reasons": [
+                        {
+                            "reason": "The customer does not have enough funds to complete the payment or has reached a payment limit.",
+                            "occurrences": 1425
+                        },
+                        {
+                            "reason": "The phone number does not have a mobile money wallet or does not belong to the telco.",
+                            "occurrences": 81
+                        },
+                        {
+                            "reason": "The payment failed due to an unknown reason.",
+                            "occurrences": 520
+                        },
+                        {
+                            "reason": "The customer did not authorize the payment in time or the transaction timed out at the Mobile Network Operator",
+                            "occurrences": 275
+                        },
+                        {
+                            "reason": "The customer does not have enough funds to complete the payment.",
+                            "occurrences": 147
+                        },
+                        {
+                            "reason": "The customer entered incorrect PIN to authorise the payment.",
+                            "occurrences": 37
+                        },
+                        {
+                            "reason": "The MSISDN is too long for the identified country UGA",
+                            "occurrences": 3
+                        },
+                        {
+                            "reason": "Blocked-UNKNOWN_REASON",
+                            "occurrences": 4
+                        },
+                        {
                             "reason": "The customers mobile money wallet is locked.",
                             "occurrences": 4
+                        },
+                        {
+                            "reason": "Blocked-INSUFFICIENT_BALANCE_FALLBACK",
+                            "occurrences": 12
+                        },
+                        {
+                            "reason": "The MSISDN is too short for the identified country UGA",
+                            "occurrences": 3
+                        },
+                        {
+                            "reason": "Blocked-WALLET_LOCKED",
+                            "occurrences": 4
+                        },
+                        {
+                            "reason": "Invalid MSISDN for the identified country UGA",
+                            "occurrences": 4
+                        },
+                        {
+                            "reason": "The customer did not approve the payment. Either the customer did not enter their PIN in time or incorrect PIN was entered.",
+                            "occurrences": 1
+                        }
+                    ],
+                    "operators": [
+                        {
+                            "operator": "MTN_MOMO_UGA",
+                            "attempts": 1824,
+                            "ok": 38
+                        },
+                        {
+                            "operator": "AIRTEL_OAPI_UGA",
+                            "attempts": 738,
+                            "ok": 24
+                        }
+                    ]
+                },
+                {
+                    "date": "2026-10-12",
+                    "total_resolved": 2033,
+                    "completed": 64,
+                    "conversion_rate_pct": 3.15,
+                    "reasons": [
+                        {
+                            "reason": "The customer does not have enough funds to complete the payment or has reached a payment limit.",
+                            "occurrences": 1038
+                        },
+                        {
+                            "reason": "The customer does not have enough funds to complete the payment.",
+                            "occurrences": 130
+                        },
+                        {
+                            "reason": "The payment failed due to an unknown reason.",
+                            "occurrences": 448
+                        },
+                        {
+                            "reason": "The customer did not authorize the payment in time or the transaction timed out at the Mobile Network Operator",
+                            "occurrences": 210
+                        },
+                        {
+                            "reason": "The phone number does not have a mobile money wallet or does not belong to the telco.",
+                            "occurrences": 44
+                        },
+                        {
+                            "reason": "Blocked-UNKNOWN_REASON",
+                            "occurrences": 2
+                        },
+                        {
+                            "reason": "The customer entered incorrect PIN to authorise the payment.",
+                            "occurrences": 31
                         },
                         {
                             "reason": "Blocked-WALLET_LOCKED",
                             "occurrences": 2
                         },
                         {
-                            "reason": "The MSISDN is too short for the identified country COD",
+                            "reason": "The correspondent is currently unavailable. Please check https://status.DTPay.cloud for details.",
+                            "occurrences": 44
+                        },
+                        {
+                            "reason": "Blocked-INSUFFICIENT_BALANCE_FALLBACK",
                             "occurrences": 10
                         },
                         {
+                            "reason": "Internal Error",
+                            "occurrences": 1
+                        },
+                        {
                             "reason": "API Call Failure",
+                            "occurrences": 1
+                        },
+                        {
+                            "reason": "The MSISDN is too short for the identified country UGA",
+                            "occurrences": 3
+                        },
+                        {
+                            "reason": "The customer did not approve the payment. Either the customer did not enter their PIN in time or incorrect PIN was entered.",
+                            "occurrences": 1
+                        },
+                        {
+                            "reason": "The customers mobile money wallet is locked.",
                             "occurrences": 2
+                        },
+                        {
+                            "reason": "ACCEPTED",
+                            "occurrences": 1
+                        },
+                        {
+                            "reason": "Invalid MSISDN for the identified country UGA",
+                            "occurrences": 1
                         }
                     ],
                     "operators": [
                         {
-                            "operator": "AIRTEL_COD",
-                            "attempts": 1369,
-                            "ok": 52
+                            "operator": "MTN_MOMO_UGA",
+                            "attempts": 1348,
+                            "ok": 38
                         },
                         {
-                            "operator": "VODACOM_MPESA_COD",
-                            "attempts": 813,
-                            "ok": 31
-                        },
-                        {
-                            "operator": "ORANGE_COD",
-                            "attempts": 526,
-                            "ok": 17
+                            "operator": "AIRTEL_OAPI_UGA",
+                            "attempts": 671,
+                            "ok": 26
                         }
                     ]
                 },
                 {
-                    "date": "2026-10-10",
-                    "total_resolved": 2009,
-                    "completed": 77,
-                    "conversion_rate_pct": 3.83,
+                    "date": "2026-10-13",
+                    "total_resolved": 404,
+                    "completed": 14,
+                    "conversion_rate_pct": 3.47,
                     "reasons": [
                         {
-                            "reason": "The customer does not have enough funds to complete the payment.",
-                            "occurrences": 263
+                            "reason": "The phone number does not have a mobile money wallet or does not belong to the telco.",
+                            "occurrences": 8
                         },
                         {
-                            "reason": "Authorization not approved in time.",
-                            "occurrences": 414
+                            "reason": "The customer did not authorize the payment in time or the transaction timed out at the Mobile Network Operator",
+                            "occurrences": 45
                         },
                         {
                             "reason": "The payment failed due to an unknown reason.",
-                            "occurrences": 375
+                            "occurrences": 95
                         },
                         {
                             "reason": "The customer did not approve the payment. Either the customer did not enter their PIN in time or incorrect PIN was entered.",
-                            "occurrences": 642
+                            "occurrences": 1
                         },
                         {
-                            "reason": "Blocked-UNKNOWN_REASON",
-                            "occurrences": 25
+                            "reason": "The customer does not have enough funds to complete the payment.",
+                            "occurrences": 35
                         },
                         {
-                            "reason": "The customer entered incorrect PIN to authorise the payment.",
-                            "occurrences": 93
-                        },
-                        {
-                            "reason": "The phone number does not have a mobile money wallet or does not belong to the telco.",
-                            "occurrences": 10
+                            "reason": "The customer does not have enough funds to complete the payment or has reached a payment limit.",
+                            "occurrences": 174
                         },
                         {
                             "reason": "Blocked-INSUFFICIENT_BALANCE_FALLBACK",
-                            "occurrences": 16
+                            "occurrences": 6
                         },
                         {
-                            "reason": "The customers mobile money wallet is locked.",
-                            "occurrences": 4
-                        },
-                        {
-                            "reason": "The MSISDN is too short for the identified country COD",
-                            "occurrences": 7
+                            "reason": "The customer entered incorrect PIN to authorise the payment.",
+                            "occurrences": 14
                         },
                         {
                             "reason": "ACCEPTED",
-                            "occurrences": 83
+                            "occurrences": 9
+                        },
+                        {
+                            "reason": "The MSISDN is too short for the identified country UGA",
+                            "occurrences": 3
                         }
                     ],
                     "operators": [
                         {
-                            "operator": "AIRTEL_COD",
-                            "attempts": 1039,
-                            "ok": 47
+                            "operator": "MTN_MOMO_UGA",
+                            "attempts": 240,
+                            "ok": 10
                         },
                         {
-                            "operator": "VODACOM_MPESA_COD",
-                            "attempts": 604,
-                            "ok": 22
-                        },
-                        {
-                            "operator": "ORANGE_COD",
-                            "attempts": 325,
-                            "ok": 8
+                            "operator": "AIRTEL_OAPI_UGA",
+                            "attempts": 158,
+                            "ok": 4
                         }
                     ]
                 }
             ],
             "hourly": [
                 {
-                    "hour": "2026-10-04T00:00:00",
-                    "total_resolved": 344,
-                    "completed": 11,
-                    "conversion_rate_pct": 3.2
-                },
-                {
-                    "hour": "2026-10-04T01:00:00",
-                    "total_resolved": 227,
-                    "completed": 11,
-                    "conversion_rate_pct": 4.85
-                },
-                {
-                    "hour": "2026-10-04T02:00:00",
-                    "total_resolved": 166,
-                    "completed": 6,
-                    "conversion_rate_pct": 3.61
-                },
-                {
-                    "hour": "2026-10-04T03:00:00",
-                    "total_resolved": 57,
-                    "completed": 1,
-                    "conversion_rate_pct": 1.75
-                },
-                {
-                    "hour": "2026-10-04T04:00:00",
-                    "total_resolved": 39,
-                    "completed": 0,
-                    "conversion_rate_pct": 0.0
-                },
-                {
-                    "hour": "2026-10-04T05:00:00",
-                    "total_resolved": 47,
-                    "completed": 1,
-                    "conversion_rate_pct": 2.13
-                },
-                {
-                    "hour": "2026-10-04T06:00:00",
-                    "total_resolved": 31,
-                    "completed": 2,
-                    "conversion_rate_pct": 6.45
-                },
-                {
-                    "hour": "2026-10-04T07:00:00",
-                    "total_resolved": 47,
-                    "completed": 4,
-                    "conversion_rate_pct": 8.51
-                },
-                {
-                    "hour": "2026-10-04T08:00:00",
-                    "total_resolved": 89,
-                    "completed": 10,
-                    "conversion_rate_pct": 11.24
-                },
-                {
-                    "hour": "2026-10-04T09:00:00",
-                    "total_resolved": 105,
-                    "completed": 7,
-                    "conversion_rate_pct": 6.67
-                },
-                {
-                    "hour": "2026-10-04T10:00:00",
-                    "total_resolved": 104,
-                    "completed": 2,
-                    "conversion_rate_pct": 1.92
-                },
-                {
-                    "hour": "2026-10-04T11:00:00",
-                    "total_resolved": 124,
-                    "completed": 1,
-                    "conversion_rate_pct": 0.81
-                },
-                {
-                    "hour": "2026-10-04T12:00:00",
-                    "total_resolved": 116,
-                    "completed": 5,
-                    "conversion_rate_pct": 4.31
-                },
-                {
-                    "hour": "2026-10-04T13:00:00",
-                    "total_resolved": 93,
-                    "completed": 4,
-                    "conversion_rate_pct": 4.3
-                },
-                {
-                    "hour": "2026-10-04T14:00:00",
-                    "total_resolved": 91,
-                    "completed": 3,
-                    "conversion_rate_pct": 3.3
-                },
-                {
-                    "hour": "2026-10-04T15:00:00",
-                    "total_resolved": 118,
-                    "completed": 3,
-                    "conversion_rate_pct": 2.54
-                },
-                {
-                    "hour": "2026-10-04T16:00:00",
-                    "total_resolved": 126,
-                    "completed": 2,
-                    "conversion_rate_pct": 1.59
-                },
-                {
-                    "hour": "2026-10-04T17:00:00",
-                    "total_resolved": 106,
-                    "completed": 1,
-                    "conversion_rate_pct": 0.94
-                },
-                {
-                    "hour": "2026-10-04T18:00:00",
-                    "total_resolved": 97,
-                    "completed": 5,
-                    "conversion_rate_pct": 5.15
-                },
-                {
-                    "hour": "2026-10-04T19:00:00",
-                    "total_resolved": 109,
-                    "completed": 2,
-                    "conversion_rate_pct": 1.83
-                },
-                {
-                    "hour": "2026-10-04T20:00:00",
-                    "total_resolved": 116,
-                    "completed": 1,
-                    "conversion_rate_pct": 0.86
-                },
-                {
-                    "hour": "2026-10-04T21:00:00",
-                    "total_resolved": 71,
-                    "completed": 5,
-                    "conversion_rate_pct": 7.04
-                },
-                {
-                    "hour": "2026-10-04T22:00:00",
-                    "total_resolved": 99,
-                    "completed": 3,
-                    "conversion_rate_pct": 3.03
-                },
-                {
-                    "hour": "2026-10-04T23:00:00",
-                    "total_resolved": 227,
-                    "completed": 9,
-                    "conversion_rate_pct": 3.96
-                },
-                {
-                    "hour": "2026-10-05T00:00:00",
-                    "total_resolved": 96,
-                    "completed": 3,
-                    "conversion_rate_pct": 3.12
-                },
-                {
-                    "hour": "2026-10-05T01:00:00",
-                    "total_resolved": 61,
-                    "completed": 4,
-                    "conversion_rate_pct": 6.56
-                },
-                {
-                    "hour": "2026-10-05T02:00:00",
-                    "total_resolved": 35,
-                    "completed": 0,
-                    "conversion_rate_pct": 0.0
-                },
-                {
-                    "hour": "2026-10-05T03:00:00",
-                    "total_resolved": 15,
-                    "completed": 1,
-                    "conversion_rate_pct": 6.67
-                },
-                {
-                    "hour": "2026-10-05T04:00:00",
-                    "total_resolved": 13,
-                    "completed": 0,
-                    "conversion_rate_pct": 0.0
-                },
-                {
-                    "hour": "2026-10-05T05:00:00",
-                    "total_resolved": 13,
-                    "completed": 0,
-                    "conversion_rate_pct": 0.0
-                },
-                {
-                    "hour": "2026-10-05T06:00:00",
-                    "total_resolved": 14,
-                    "completed": 0,
-                    "conversion_rate_pct": 0.0
-                },
-                {
-                    "hour": "2026-10-05T07:00:00",
-                    "total_resolved": 19,
-                    "completed": 0,
-                    "conversion_rate_pct": 0.0
-                },
-                {
-                    "hour": "2026-10-05T08:00:00",
-                    "total_resolved": 50,
-                    "completed": 4,
-                    "conversion_rate_pct": 8.0
-                },
-                {
-                    "hour": "2026-10-05T09:00:00",
-                    "total_resolved": 67,
-                    "completed": 5,
-                    "conversion_rate_pct": 7.46
-                },
-                {
-                    "hour": "2026-10-05T10:00:00",
-                    "total_resolved": 88,
-                    "completed": 2,
-                    "conversion_rate_pct": 2.27
-                },
-                {
-                    "hour": "2026-10-05T11:00:00",
-                    "total_resolved": 87,
-                    "completed": 2,
-                    "conversion_rate_pct": 2.3
-                },
-                {
-                    "hour": "2026-10-05T12:00:00",
-                    "total_resolved": 93,
-                    "completed": 5,
-                    "conversion_rate_pct": 5.38
-                },
-                {
-                    "hour": "2026-10-05T13:00:00",
-                    "total_resolved": 103,
-                    "completed": 5,
-                    "conversion_rate_pct": 4.85
-                },
-                {
-                    "hour": "2026-10-05T14:00:00",
-                    "total_resolved": 141,
-                    "completed": 5,
-                    "conversion_rate_pct": 3.55
-                },
-                {
-                    "hour": "2026-10-05T15:00:00",
-                    "total_resolved": 117,
-                    "completed": 1,
-                    "conversion_rate_pct": 0.85
-                },
-                {
-                    "hour": "2026-10-05T16:00:00",
-                    "total_resolved": 128,
-                    "completed": 6,
-                    "conversion_rate_pct": 4.69
-                },
-                {
-                    "hour": "2026-10-05T17:00:00",
-                    "total_resolved": 150,
-                    "completed": 2,
-                    "conversion_rate_pct": 1.33
-                },
-                {
-                    "hour": "2026-10-05T18:00:00",
-                    "total_resolved": 195,
-                    "completed": 5,
-                    "conversion_rate_pct": 2.56
-                },
-                {
-                    "hour": "2026-10-05T19:00:00",
-                    "total_resolved": 305,
-                    "completed": 11,
-                    "conversion_rate_pct": 3.61
-                },
-                {
-                    "hour": "2026-10-05T20:00:00",
-                    "total_resolved": 334,
-                    "completed": 10,
-                    "conversion_rate_pct": 2.99
-                },
-                {
-                    "hour": "2026-10-05T21:00:00",
-                    "total_resolved": 426,
-                    "completed": 10,
-                    "conversion_rate_pct": 2.35
-                },
-                {
-                    "hour": "2026-10-05T22:00:00",
-                    "total_resolved": 473,
-                    "completed": 11,
-                    "conversion_rate_pct": 2.33
-                },
-                {
-                    "hour": "2026-10-05T23:00:00",
-                    "total_resolved": 500,
-                    "completed": 6,
-                    "conversion_rate_pct": 1.2
-                },
-                {
-                    "hour": "2026-10-06T00:00:00",
-                    "total_resolved": 272,
-                    "completed": 6,
-                    "conversion_rate_pct": 2.21
-                },
-                {
-                    "hour": "2026-10-06T01:00:00",
-                    "total_resolved": 259,
-                    "completed": 6,
-                    "conversion_rate_pct": 2.32
-                },
-                {
-                    "hour": "2026-10-06T02:00:00",
-                    "total_resolved": 134,
-                    "completed": 6,
-                    "conversion_rate_pct": 4.48
-                },
-                {
-                    "hour": "2026-10-06T03:00:00",
-                    "total_resolved": 52,
-                    "completed": 4,
-                    "conversion_rate_pct": 7.69
-                },
-                {
-                    "hour": "2026-10-06T04:00:00",
-                    "total_resolved": 36,
-                    "completed": 2,
-                    "conversion_rate_pct": 5.56
-                },
-                {
-                    "hour": "2026-10-06T05:00:00",
-                    "total_resolved": 19,
-                    "completed": 0,
-                    "conversion_rate_pct": 0.0
-                },
-                {
-                    "hour": "2026-10-06T06:00:00",
-                    "total_resolved": 25,
-                    "completed": 3,
-                    "conversion_rate_pct": 12.0
-                },
-                {
-                    "hour": "2026-10-06T07:00:00",
-                    "total_resolved": 47,
-                    "completed": 3,
-                    "conversion_rate_pct": 6.38
-                },
-                {
-                    "hour": "2026-10-06T08:00:00",
-                    "total_resolved": 60,
-                    "completed": 3,
-                    "conversion_rate_pct": 5.0
-                },
-                {
-                    "hour": "2026-10-06T09:00:00",
-                    "total_resolved": 97,
-                    "completed": 5,
-                    "conversion_rate_pct": 5.15
-                },
-                {
-                    "hour": "2026-10-06T10:00:00",
-                    "total_resolved": 104,
-                    "completed": 3,
-                    "conversion_rate_pct": 2.88
-                },
-                {
-                    "hour": "2026-10-06T11:00:00",
-                    "total_resolved": 126,
-                    "completed": 7,
-                    "conversion_rate_pct": 5.56
-                },
-                {
-                    "hour": "2026-10-06T12:00:00",
-                    "total_resolved": 138,
-                    "completed": 5,
-                    "conversion_rate_pct": 3.62
-                },
-                {
-                    "hour": "2026-10-06T13:00:00",
-                    "total_resolved": 109,
-                    "completed": 5,
-                    "conversion_rate_pct": 4.59
-                },
-                {
-                    "hour": "2026-10-06T14:00:00",
-                    "total_resolved": 123,
-                    "completed": 2,
-                    "conversion_rate_pct": 1.63
-                },
-                {
-                    "hour": "2026-10-06T15:00:00",
-                    "total_resolved": 129,
-                    "completed": 6,
-                    "conversion_rate_pct": 4.65
-                },
-                {
-                    "hour": "2026-10-06T16:00:00",
-                    "total_resolved": 98,
-                    "completed": 6,
-                    "conversion_rate_pct": 6.12
-                },
-                {
-                    "hour": "2026-10-06T17:00:00",
-                    "total_resolved": 146,
-                    "completed": 4,
-                    "conversion_rate_pct": 2.74
-                },
-                {
-                    "hour": "2026-10-06T18:00:00",
-                    "total_resolved": 205,
-                    "completed": 3,
-                    "conversion_rate_pct": 1.46
-                },
-                {
-                    "hour": "2026-10-06T19:00:00",
-                    "total_resolved": 191,
-                    "completed": 9,
-                    "conversion_rate_pct": 4.71
-                },
-                {
-                    "hour": "2026-10-06T20:00:00",
-                    "total_resolved": 176,
-                    "completed": 7,
-                    "conversion_rate_pct": 3.98
-                },
-                {
-                    "hour": "2026-10-06T21:00:00",
-                    "total_resolved": 183,
-                    "completed": 4,
-                    "conversion_rate_pct": 2.19
-                },
-                {
-                    "hour": "2026-10-06T22:00:00",
-                    "total_resolved": 190,
-                    "completed": 10,
-                    "conversion_rate_pct": 5.26
-                },
-                {
-                    "hour": "2026-10-06T23:00:00",
-                    "total_resolved": 221,
-                    "completed": 6,
-                    "conversion_rate_pct": 2.71
-                },
-                {
                     "hour": "2026-10-07T00:00:00",
-                    "total_resolved": 52,
+                    "total_resolved": 27,
                     "completed": 1,
-                    "conversion_rate_pct": 1.92
-                },
-                {
-                    "hour": "2026-10-07T01:00:00",
-                    "total_resolved": 37,
-                    "completed": 2,
-                    "conversion_rate_pct": 5.41
-                },
-                {
-                    "hour": "2026-10-07T02:00:00",
-                    "total_resolved": 54,
-                    "completed": 2,
                     "conversion_rate_pct": 3.7
                 },
                 {
-                    "hour": "2026-10-07T03:00:00",
-                    "total_resolved": 28,
-                    "completed": 1,
-                    "conversion_rate_pct": 3.57
+                    "hour": "2026-10-07T01:00:00",
+                    "total_resolved": 24,
+                    "completed": 3,
+                    "conversion_rate_pct": 12.5
                 },
                 {
-                    "hour": "2026-10-07T04:00:00",
-                    "total_resolved": 17,
+                    "hour": "2026-10-07T02:00:00",
+                    "total_resolved": 11,
+                    "completed": 2,
+                    "conversion_rate_pct": 18.18
+                },
+                {
+                    "hour": "2026-10-07T03:00:00",
+                    "total_resolved": 11,
                     "completed": 0,
                     "conversion_rate_pct": 0.0
                 },
                 {
+                    "hour": "2026-10-07T04:00:00",
+                    "total_resolved": 8,
+                    "completed": 1,
+                    "conversion_rate_pct": 12.5
+                },
+                {
                     "hour": "2026-10-07T05:00:00",
-                    "total_resolved": 7,
+                    "total_resolved": 0,
                     "completed": 0,
                     "conversion_rate_pct": 0.0
                 },
                 {
                     "hour": "2026-10-07T06:00:00",
-                    "total_resolved": 8,
-                    "completed": 0,
-                    "conversion_rate_pct": 0.0
-                },
-                {
-                    "hour": "2026-10-07T07:00:00",
-                    "total_resolved": 21,
-                    "completed": 2,
-                    "conversion_rate_pct": 9.52
-                },
-                {
-                    "hour": "2026-10-07T08:00:00",
-                    "total_resolved": 31,
-                    "completed": 0,
-                    "conversion_rate_pct": 0.0
-                },
-                {
-                    "hour": "2026-10-07T09:00:00",
-                    "total_resolved": 38,
-                    "completed": 5,
-                    "conversion_rate_pct": 13.16
-                },
-                {
-                    "hour": "2026-10-07T10:00:00",
-                    "total_resolved": 54,
-                    "completed": 1,
-                    "conversion_rate_pct": 1.85
-                },
-                {
-                    "hour": "2026-10-07T11:00:00",
-                    "total_resolved": 50,
-                    "completed": 0,
-                    "conversion_rate_pct": 0.0
-                },
-                {
-                    "hour": "2026-10-07T12:00:00",
-                    "total_resolved": 57,
-                    "completed": 1,
-                    "conversion_rate_pct": 1.75
-                },
-                {
-                    "hour": "2026-10-07T13:00:00",
-                    "total_resolved": 65,
-                    "completed": 2,
-                    "conversion_rate_pct": 3.08
-                },
-                {
-                    "hour": "2026-10-07T14:00:00",
-                    "total_resolved": 75,
-                    "completed": 2,
-                    "conversion_rate_pct": 2.67
-                },
-                {
-                    "hour": "2026-10-07T15:00:00",
-                    "total_resolved": 71,
-                    "completed": 4,
-                    "conversion_rate_pct": 5.63
-                },
-                {
-                    "hour": "2026-10-07T16:00:00",
-                    "total_resolved": 62,
-                    "completed": 4,
-                    "conversion_rate_pct": 6.45
-                },
-                {
-                    "hour": "2026-10-07T17:00:00",
-                    "total_resolved": 93,
-                    "completed": 5,
-                    "conversion_rate_pct": 5.38
-                },
-                {
-                    "hour": "2026-10-07T18:00:00",
-                    "total_resolved": 167,
-                    "completed": 14,
-                    "conversion_rate_pct": 8.38
-                },
-                {
-                    "hour": "2026-10-07T19:00:00",
-                    "total_resolved": 154,
-                    "completed": 7,
-                    "conversion_rate_pct": 4.55
-                },
-                {
-                    "hour": "2026-10-07T20:00:00",
-                    "total_resolved": 147,
-                    "completed": 6,
-                    "conversion_rate_pct": 4.08
-                },
-                {
-                    "hour": "2026-10-07T21:00:00",
-                    "total_resolved": 170,
-                    "completed": 5,
-                    "conversion_rate_pct": 2.94
-                },
-                {
-                    "hour": "2026-10-07T22:00:00",
-                    "total_resolved": 191,
-                    "completed": 8,
-                    "conversion_rate_pct": 4.19
-                },
-                {
-                    "hour": "2026-10-07T23:00:00",
-                    "total_resolved": 179,
-                    "completed": 6,
-                    "conversion_rate_pct": 3.35
-                },
-                {
-                    "hour": "2026-10-08T00:00:00",
-                    "total_resolved": 70,
-                    "completed": 4,
-                    "conversion_rate_pct": 5.71
-                },
-                {
-                    "hour": "2026-10-08T01:00:00",
-                    "total_resolved": 68,
-                    "completed": 4,
-                    "conversion_rate_pct": 5.88
-                },
-                {
-                    "hour": "2026-10-08T02:00:00",
-                    "total_resolved": 32,
-                    "completed": 2,
-                    "conversion_rate_pct": 6.25
-                },
-                {
-                    "hour": "2026-10-08T03:00:00",
-                    "total_resolved": 17,
-                    "completed": 1,
-                    "conversion_rate_pct": 5.88
-                },
-                {
-                    "hour": "2026-10-08T04:00:00",
                     "total_resolved": 12,
                     "completed": 0,
                     "conversion_rate_pct": 0.0
                 },
                 {
-                    "hour": "2026-10-08T05:00:00",
-                    "total_resolved": 13,
-                    "completed": 0,
-                    "conversion_rate_pct": 0.0
-                },
-                {
-                    "hour": "2026-10-08T06:00:00",
-                    "total_resolved": 17,
-                    "completed": 0,
-                    "conversion_rate_pct": 0.0
-                },
-                {
-                    "hour": "2026-10-08T07:00:00",
-                    "total_resolved": 24,
-                    "completed": 0,
-                    "conversion_rate_pct": 0.0
-                },
-                {
-                    "hour": "2026-10-08T08:00:00",
-                    "total_resolved": 37,
-                    "completed": 3,
-                    "conversion_rate_pct": 8.11
-                },
-                {
-                    "hour": "2026-10-08T09:00:00",
-                    "total_resolved": 53,
-                    "completed": 2,
-                    "conversion_rate_pct": 3.77
-                },
-                {
-                    "hour": "2026-10-08T10:00:00",
-                    "total_resolved": 88,
-                    "completed": 4,
-                    "conversion_rate_pct": 4.55
-                },
-                {
-                    "hour": "2026-10-08T11:00:00",
-                    "total_resolved": 76,
+                    "hour": "2026-10-07T07:00:00",
+                    "total_resolved": 29,
                     "completed": 1,
-                    "conversion_rate_pct": 1.32
+                    "conversion_rate_pct": 3.45
                 },
                 {
-                    "hour": "2026-10-08T12:00:00",
+                    "hour": "2026-10-07T08:00:00",
+                    "total_resolved": 59,
+                    "completed": 2,
+                    "conversion_rate_pct": 3.39
+                },
+                {
+                    "hour": "2026-10-07T09:00:00",
+                    "total_resolved": 73,
+                    "completed": 1,
+                    "conversion_rate_pct": 1.37
+                },
+                {
+                    "hour": "2026-10-07T10:00:00",
                     "total_resolved": 86,
                     "completed": 4,
                     "conversion_rate_pct": 4.65
                 },
                 {
-                    "hour": "2026-10-08T13:00:00",
-                    "total_resolved": 97,
+                    "hour": "2026-10-07T11:00:00",
+                    "total_resolved": 76,
                     "completed": 4,
-                    "conversion_rate_pct": 4.12
+                    "conversion_rate_pct": 5.26
                 },
                 {
-                    "hour": "2026-10-08T14:00:00",
+                    "hour": "2026-10-07T12:00:00",
+                    "total_resolved": 89,
+                    "completed": 3,
+                    "conversion_rate_pct": 3.37
+                },
+                {
+                    "hour": "2026-10-07T13:00:00",
+                    "total_resolved": 84,
+                    "completed": 3,
+                    "conversion_rate_pct": 3.57
+                },
+                {
+                    "hour": "2026-10-07T14:00:00",
+                    "total_resolved": 84,
+                    "completed": 2,
+                    "conversion_rate_pct": 2.38
+                },
+                {
+                    "hour": "2026-10-07T15:00:00",
                     "total_resolved": 92,
-                    "completed": 6,
-                    "conversion_rate_pct": 6.52
+                    "completed": 3,
+                    "conversion_rate_pct": 3.26
                 },
                 {
-                    "hour": "2026-10-08T15:00:00",
-                    "total_resolved": 86,
-                    "completed": 1,
-                    "conversion_rate_pct": 1.16
-                },
-                {
-                    "hour": "2026-10-08T16:00:00",
-                    "total_resolved": 66,
-                    "completed": 1,
-                    "conversion_rate_pct": 1.52
-                },
-                {
-                    "hour": "2026-10-08T17:00:00",
-                    "total_resolved": 98,
+                    "hour": "2026-10-07T16:00:00",
+                    "total_resolved": 101,
                     "completed": 2,
-                    "conversion_rate_pct": 2.04
+                    "conversion_rate_pct": 1.98
                 },
                 {
-                    "hour": "2026-10-08T18:00:00",
-                    "total_resolved": 65,
-                    "completed": 2,
-                    "conversion_rate_pct": 3.08
-                },
-                {
-                    "hour": "2026-10-08T19:00:00",
-                    "total_resolved": 85,
-                    "completed": 2,
-                    "conversion_rate_pct": 2.35
-                },
-                {
-                    "hour": "2026-10-08T20:00:00",
-                    "total_resolved": 115,
-                    "completed": 5,
-                    "conversion_rate_pct": 4.35
-                },
-                {
-                    "hour": "2026-10-08T21:00:00",
-                    "total_resolved": 225,
-                    "completed": 9,
-                    "conversion_rate_pct": 4.0
-                },
-                {
-                    "hour": "2026-10-08T22:00:00",
-                    "total_resolved": 241,
-                    "completed": 2,
-                    "conversion_rate_pct": 0.83
-                },
-                {
-                    "hour": "2026-10-08T23:00:00",
-                    "total_resolved": 288,
-                    "completed": 10,
-                    "conversion_rate_pct": 3.47
-                },
-                {
-                    "hour": "2026-10-09T00:00:00",
-                    "total_resolved": 159,
-                    "completed": 5,
-                    "conversion_rate_pct": 3.14
-                },
-                {
-                    "hour": "2026-10-09T01:00:00",
-                    "total_resolved": 126,
-                    "completed": 1,
-                    "conversion_rate_pct": 0.79
-                },
-                {
-                    "hour": "2026-10-09T02:00:00",
-                    "total_resolved": 81,
-                    "completed": 0,
-                    "conversion_rate_pct": 0.0
-                },
-                {
-                    "hour": "2026-10-09T03:00:00",
-                    "total_resolved": 31,
-                    "completed": 1,
-                    "conversion_rate_pct": 3.23
-                },
-                {
-                    "hour": "2026-10-09T04:00:00",
-                    "total_resolved": 20,
-                    "completed": 0,
-                    "conversion_rate_pct": 0.0
-                },
-                {
-                    "hour": "2026-10-09T05:00:00",
-                    "total_resolved": 19,
-                    "completed": 1,
-                    "conversion_rate_pct": 5.26
-                },
-                {
-                    "hour": "2026-10-09T06:00:00",
-                    "total_resolved": 17,
-                    "completed": 0,
-                    "conversion_rate_pct": 0.0
-                },
-                {
-                    "hour": "2026-10-09T07:00:00",
-                    "total_resolved": 33,
-                    "completed": 2,
-                    "conversion_rate_pct": 6.06
-                },
-                {
-                    "hour": "2026-10-09T08:00:00",
-                    "total_resolved": 62,
+                    "hour": "2026-10-07T17:00:00",
+                    "total_resolved": 169,
                     "completed": 4,
-                    "conversion_rate_pct": 6.45
+                    "conversion_rate_pct": 2.37
                 },
                 {
-                    "hour": "2026-10-09T09:00:00",
-                    "total_resolved": 113,
-                    "completed": 3,
-                    "conversion_rate_pct": 2.65
-                },
-                {
-                    "hour": "2026-10-09T10:00:00",
-                    "total_resolved": 141,
-                    "completed": 5,
-                    "conversion_rate_pct": 3.55
-                },
-                {
-                    "hour": "2026-10-09T11:00:00",
-                    "total_resolved": 107,
+                    "hour": "2026-10-07T18:00:00",
+                    "total_resolved": 176,
                     "completed": 4,
-                    "conversion_rate_pct": 3.74
-                },
-                {
-                    "hour": "2026-10-09T12:00:00",
-                    "total_resolved": 152,
-                    "completed": 9,
-                    "conversion_rate_pct": 5.92
-                },
-                {
-                    "hour": "2026-10-09T13:00:00",
-                    "total_resolved": 134,
-                    "completed": 6,
-                    "conversion_rate_pct": 4.48
-                },
-                {
-                    "hour": "2026-10-09T14:00:00",
-                    "total_resolved": 113,
-                    "completed": 4,
-                    "conversion_rate_pct": 3.54
-                },
-                {
-                    "hour": "2026-10-09T15:00:00",
-                    "total_resolved": 134,
-                    "completed": 6,
-                    "conversion_rate_pct": 4.48
-                },
-                {
-                    "hour": "2026-10-09T16:00:00",
-                    "total_resolved": 149,
-                    "completed": 6,
-                    "conversion_rate_pct": 4.03
-                },
-                {
-                    "hour": "2026-10-09T17:00:00",
-                    "total_resolved": 160,
-                    "completed": 3,
-                    "conversion_rate_pct": 1.88
-                },
-                {
-                    "hour": "2026-10-09T18:00:00",
-                    "total_resolved": 148,
-                    "completed": 7,
-                    "conversion_rate_pct": 4.73
-                },
-                {
-                    "hour": "2026-10-09T19:00:00",
-                    "total_resolved": 174,
-                    "completed": 6,
-                    "conversion_rate_pct": 3.45
-                },
-                {
-                    "hour": "2026-10-09T20:00:00",
-                    "total_resolved": 144,
-                    "completed": 3,
-                    "conversion_rate_pct": 2.08
-                },
-                {
-                    "hour": "2026-10-09T21:00:00",
-                    "total_resolved": 158,
-                    "completed": 5,
-                    "conversion_rate_pct": 3.16
-                },
-                {
-                    "hour": "2026-10-09T22:00:00",
-                    "total_resolved": 139,
-                    "completed": 2,
-                    "conversion_rate_pct": 1.44
-                },
-                {
-                    "hour": "2026-10-09T23:00:00",
-                    "total_resolved": 269,
-                    "completed": 17,
-                    "conversion_rate_pct": 6.32
-                },
-                {
-                    "hour": "2026-10-10T00:00:00",
-                    "total_resolved": 123,
-                    "completed": 3,
-                    "conversion_rate_pct": 2.44
-                },
-                {
-                    "hour": "2026-10-10T01:00:00",
-                    "total_resolved": 95,
-                    "completed": 5,
-                    "conversion_rate_pct": 5.26
-                },
-                {
-                    "hour": "2026-10-10T02:00:00",
-                    "total_resolved": 57,
-                    "completed": 2,
-                    "conversion_rate_pct": 3.51
-                },
-                {
-                    "hour": "2026-10-10T03:00:00",
-                    "total_resolved": 29,
-                    "completed": 3,
-                    "conversion_rate_pct": 10.34
-                },
-                {
-                    "hour": "2026-10-10T04:00:00",
-                    "total_resolved": 26,
-                    "completed": 3,
-                    "conversion_rate_pct": 11.54
-                },
-                {
-                    "hour": "2026-10-10T05:00:00",
-                    "total_resolved": 19,
-                    "completed": 0,
-                    "conversion_rate_pct": 0.0
-                },
-                {
-                    "hour": "2026-10-10T06:00:00",
-                    "total_resolved": 29,
-                    "completed": 0,
-                    "conversion_rate_pct": 0.0
-                },
-                {
-                    "hour": "2026-10-10T07:00:00",
-                    "total_resolved": 51,
-                    "completed": 3,
-                    "conversion_rate_pct": 5.88
-                },
-                {
-                    "hour": "2026-10-10T08:00:00",
-                    "total_resolved": 80,
-                    "completed": 2,
-                    "conversion_rate_pct": 2.5
-                },
-                {
-                    "hour": "2026-10-10T09:00:00",
-                    "total_resolved": 134,
-                    "completed": 8,
-                    "conversion_rate_pct": 5.97
-                },
-                {
-                    "hour": "2026-10-10T10:00:00",
-                    "total_resolved": 125,
-                    "completed": 10,
-                    "conversion_rate_pct": 8.0
-                },
-                {
-                    "hour": "2026-10-10T11:00:00",
-                    "total_resolved": 132,
-                    "completed": 3,
                     "conversion_rate_pct": 2.27
                 },
                 {
-                    "hour": "2026-10-10T12:00:00",
-                    "total_resolved": 147,
-                    "completed": 1,
-                    "conversion_rate_pct": 0.68
-                },
-                {
-                    "hour": "2026-10-10T13:00:00",
-                    "total_resolved": 138,
+                    "hour": "2026-10-07T19:00:00",
+                    "total_resolved": 124,
                     "completed": 4,
-                    "conversion_rate_pct": 2.9
+                    "conversion_rate_pct": 3.23
                 },
                 {
-                    "hour": "2026-10-10T14:00:00",
-                    "total_resolved": 167,
-                    "completed": 5,
-                    "conversion_rate_pct": 2.99
-                },
-                {
-                    "hour": "2026-10-10T15:00:00",
-                    "total_resolved": 120,
-                    "completed": 6,
-                    "conversion_rate_pct": 5.0
-                },
-                {
-                    "hour": "2026-10-10T16:00:00",
-                    "total_resolved": 128,
-                    "completed": 4,
+                    "hour": "2026-10-07T20:00:00",
+                    "total_resolved": 96,
+                    "completed": 3,
                     "conversion_rate_pct": 3.12
                 },
                 {
-                    "hour": "2026-10-10T17:00:00",
-                    "total_resolved": 163,
-                    "completed": 8,
-                    "conversion_rate_pct": 4.91
+                    "hour": "2026-10-07T21:00:00",
+                    "total_resolved": 104,
+                    "completed": 2,
+                    "conversion_rate_pct": 1.92
                 },
                 {
-                    "hour": "2026-10-10T18:00:00",
-                    "total_resolved": 175,
-                    "completed": 6,
-                    "conversion_rate_pct": 3.43
+                    "hour": "2026-10-07T22:00:00",
+                    "total_resolved": 97,
+                    "completed": 1,
+                    "conversion_rate_pct": 1.03
                 },
                 {
-                    "hour": "2026-10-10T19:00:00",
+                    "hour": "2026-10-07T23:00:00",
+                    "total_resolved": 58,
+                    "completed": 1,
+                    "conversion_rate_pct": 1.72
+                },
+                {
+                    "hour": "2026-10-08T00:00:00",
+                    "total_resolved": 51,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-08T01:00:00",
+                    "total_resolved": 47,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-08T02:00:00",
+                    "total_resolved": 13,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-08T03:00:00",
+                    "total_resolved": 42,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-08T04:00:00",
+                    "total_resolved": 37,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-08T05:00:00",
+                    "total_resolved": 64,
+                    "completed": 2,
+                    "conversion_rate_pct": 3.12
+                },
+                {
+                    "hour": "2026-10-08T06:00:00",
+                    "total_resolved": 50,
+                    "completed": 2,
+                    "conversion_rate_pct": 4.0
+                },
+                {
+                    "hour": "2026-10-08T07:00:00",
+                    "total_resolved": 65,
+                    "completed": 1,
+                    "conversion_rate_pct": 1.54
+                },
+                {
+                    "hour": "2026-10-08T08:00:00",
+                    "total_resolved": 106,
+                    "completed": 1,
+                    "conversion_rate_pct": 0.94
+                },
+                {
+                    "hour": "2026-10-08T09:00:00",
+                    "total_resolved": 72,
+                    "completed": 1,
+                    "conversion_rate_pct": 1.39
+                },
+                {
+                    "hour": "2026-10-08T10:00:00",
+                    "total_resolved": 70,
+                    "completed": 3,
+                    "conversion_rate_pct": 4.29
+                },
+                {
+                    "hour": "2026-10-08T11:00:00",
+                    "total_resolved": 58,
+                    "completed": 3,
+                    "conversion_rate_pct": 5.17
+                },
+                {
+                    "hour": "2026-10-08T12:00:00",
+                    "total_resolved": 84,
+                    "completed": 2,
+                    "conversion_rate_pct": 2.38
+                },
+                {
+                    "hour": "2026-10-08T13:00:00",
                     "total_resolved": 71,
                     "completed": 1,
                     "conversion_rate_pct": 1.41
                 },
                 {
-                    "hour": "2026-10-10T20:00:00",
-                    "total_resolved": 0,
+                    "hour": "2026-10-08T14:00:00",
+                    "total_resolved": 87,
+                    "completed": 4,
+                    "conversion_rate_pct": 4.6
+                },
+                {
+                    "hour": "2026-10-08T15:00:00",
+                    "total_resolved": 91,
+                    "completed": 2,
+                    "conversion_rate_pct": 2.2
+                },
+                {
+                    "hour": "2026-10-08T16:00:00",
+                    "total_resolved": 133,
+                    "completed": 8,
+                    "conversion_rate_pct": 6.02
+                },
+                {
+                    "hour": "2026-10-08T17:00:00",
+                    "total_resolved": 147,
+                    "completed": 2,
+                    "conversion_rate_pct": 1.36
+                },
+                {
+                    "hour": "2026-10-08T18:00:00",
+                    "total_resolved": 114,
+                    "completed": 5,
+                    "conversion_rate_pct": 4.39
+                },
+                {
+                    "hour": "2026-10-08T19:00:00",
+                    "total_resolved": 139,
+                    "completed": 2,
+                    "conversion_rate_pct": 1.44
+                },
+                {
+                    "hour": "2026-10-08T20:00:00",
+                    "total_resolved": 119,
+                    "completed": 2,
+                    "conversion_rate_pct": 1.68
+                },
+                {
+                    "hour": "2026-10-08T21:00:00",
+                    "total_resolved": 121,
+                    "completed": 3,
+                    "conversion_rate_pct": 2.48
+                },
+                {
+                    "hour": "2026-10-08T22:00:00",
+                    "total_resolved": 113,
+                    "completed": 1,
+                    "conversion_rate_pct": 0.88
+                },
+                {
+                    "hour": "2026-10-08T23:00:00",
+                    "total_resolved": 40,
+                    "completed": 1,
+                    "conversion_rate_pct": 2.5
+                },
+                {
+                    "hour": "2026-10-09T00:00:00",
+                    "total_resolved": 190,
+                    "completed": 6,
+                    "conversion_rate_pct": 3.16
+                },
+                {
+                    "hour": "2026-10-09T01:00:00",
+                    "total_resolved": 45,
                     "completed": 0,
                     "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-09T02:00:00",
+                    "total_resolved": 12,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-09T03:00:00",
+                    "total_resolved": 52,
+                    "completed": 2,
+                    "conversion_rate_pct": 3.85
+                },
+                {
+                    "hour": "2026-10-09T04:00:00",
+                    "total_resolved": 43,
+                    "completed": 1,
+                    "conversion_rate_pct": 2.33
+                },
+                {
+                    "hour": "2026-10-09T05:00:00",
+                    "total_resolved": 42,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-09T06:00:00",
+                    "total_resolved": 43,
+                    "completed": 1,
+                    "conversion_rate_pct": 2.33
+                },
+                {
+                    "hour": "2026-10-09T07:00:00",
+                    "total_resolved": 45,
+                    "completed": 1,
+                    "conversion_rate_pct": 2.22
+                },
+                {
+                    "hour": "2026-10-09T08:00:00",
+                    "total_resolved": 44,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-09T09:00:00",
+                    "total_resolved": 37,
+                    "completed": 1,
+                    "conversion_rate_pct": 2.7
+                },
+                {
+                    "hour": "2026-10-09T10:00:00",
+                    "total_resolved": 51,
+                    "completed": 3,
+                    "conversion_rate_pct": 5.88
+                },
+                {
+                    "hour": "2026-10-09T11:00:00",
+                    "total_resolved": 71,
+                    "completed": 3,
+                    "conversion_rate_pct": 4.23
+                },
+                {
+                    "hour": "2026-10-09T12:00:00",
+                    "total_resolved": 84,
+                    "completed": 1,
+                    "conversion_rate_pct": 1.19
+                },
+                {
+                    "hour": "2026-10-09T13:00:00",
+                    "total_resolved": 113,
+                    "completed": 2,
+                    "conversion_rate_pct": 1.77
+                },
+                {
+                    "hour": "2026-10-09T14:00:00",
+                    "total_resolved": 107,
+                    "completed": 4,
+                    "conversion_rate_pct": 3.74
+                },
+                {
+                    "hour": "2026-10-09T15:00:00",
+                    "total_resolved": 137,
+                    "completed": 5,
+                    "conversion_rate_pct": 3.65
+                },
+                {
+                    "hour": "2026-10-09T16:00:00",
+                    "total_resolved": 136,
+                    "completed": 7,
+                    "conversion_rate_pct": 5.15
+                },
+                {
+                    "hour": "2026-10-09T17:00:00",
+                    "total_resolved": 131,
+                    "completed": 7,
+                    "conversion_rate_pct": 5.34
+                },
+                {
+                    "hour": "2026-10-09T18:00:00",
+                    "total_resolved": 157,
+                    "completed": 4,
+                    "conversion_rate_pct": 2.55
+                },
+                {
+                    "hour": "2026-10-09T19:00:00",
+                    "total_resolved": 120,
+                    "completed": 3,
+                    "conversion_rate_pct": 2.5
+                },
+                {
+                    "hour": "2026-10-09T20:00:00",
+                    "total_resolved": 106,
+                    "completed": 1,
+                    "conversion_rate_pct": 0.94
+                },
+                {
+                    "hour": "2026-10-09T21:00:00",
+                    "total_resolved": 150,
+                    "completed": 2,
+                    "conversion_rate_pct": 1.33
+                },
+                {
+                    "hour": "2026-10-09T22:00:00",
+                    "total_resolved": 110,
+                    "completed": 2,
+                    "conversion_rate_pct": 1.82
+                },
+                {
+                    "hour": "2026-10-09T23:00:00",
+                    "total_resolved": 101,
+                    "completed": 4,
+                    "conversion_rate_pct": 3.96
+                },
+                {
+                    "hour": "2026-10-10T00:00:00",
+                    "total_resolved": 147,
+                    "completed": 6,
+                    "conversion_rate_pct": 4.08
+                },
+                {
+                    "hour": "2026-10-10T01:00:00",
+                    "total_resolved": 78,
+                    "completed": 1,
+                    "conversion_rate_pct": 1.28
+                },
+                {
+                    "hour": "2026-10-10T02:00:00",
+                    "total_resolved": 45,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-10T03:00:00",
+                    "total_resolved": 78,
+                    "completed": 1,
+                    "conversion_rate_pct": 1.28
+                },
+                {
+                    "hour": "2026-10-10T04:00:00",
+                    "total_resolved": 18,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-10T05:00:00",
+                    "total_resolved": 27,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-10T06:00:00",
+                    "total_resolved": 33,
+                    "completed": 1,
+                    "conversion_rate_pct": 3.03
+                },
+                {
+                    "hour": "2026-10-10T07:00:00",
+                    "total_resolved": 37,
+                    "completed": 3,
+                    "conversion_rate_pct": 8.11
+                },
+                {
+                    "hour": "2026-10-10T08:00:00",
+                    "total_resolved": 51,
+                    "completed": 3,
+                    "conversion_rate_pct": 5.88
+                },
+                {
+                    "hour": "2026-10-10T09:00:00",
+                    "total_resolved": 37,
+                    "completed": 1,
+                    "conversion_rate_pct": 2.7
+                },
+                {
+                    "hour": "2026-10-10T10:00:00",
+                    "total_resolved": 55,
+                    "completed": 2,
+                    "conversion_rate_pct": 3.64
+                },
+                {
+                    "hour": "2026-10-10T11:00:00",
+                    "total_resolved": 32,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-10T12:00:00",
+                    "total_resolved": 56,
+                    "completed": 2,
+                    "conversion_rate_pct": 3.57
+                },
+                {
+                    "hour": "2026-10-10T13:00:00",
+                    "total_resolved": 105,
+                    "completed": 1,
+                    "conversion_rate_pct": 0.95
+                },
+                {
+                    "hour": "2026-10-10T14:00:00",
+                    "total_resolved": 232,
+                    "completed": 5,
+                    "conversion_rate_pct": 2.16
+                },
+                {
+                    "hour": "2026-10-10T15:00:00",
+                    "total_resolved": 386,
+                    "completed": 16,
+                    "conversion_rate_pct": 4.15
+                },
+                {
+                    "hour": "2026-10-10T16:00:00",
+                    "total_resolved": 195,
+                    "completed": 7,
+                    "conversion_rate_pct": 3.59
+                },
+                {
+                    "hour": "2026-10-10T17:00:00",
+                    "total_resolved": 123,
+                    "completed": 2,
+                    "conversion_rate_pct": 1.63
+                },
+                {
+                    "hour": "2026-10-10T18:00:00",
+                    "total_resolved": 88,
+                    "completed": 1,
+                    "conversion_rate_pct": 1.14
+                },
+                {
+                    "hour": "2026-10-10T19:00:00",
+                    "total_resolved": 126,
+                    "completed": 2,
+                    "conversion_rate_pct": 1.59
+                },
+                {
+                    "hour": "2026-10-10T20:00:00",
+                    "total_resolved": 199,
+                    "completed": 7,
+                    "conversion_rate_pct": 3.52
                 },
                 {
                     "hour": "2026-10-10T21:00:00",
-                    "total_resolved": 0,
-                    "completed": 0,
-                    "conversion_rate_pct": 0.0
+                    "total_resolved": 250,
+                    "completed": 4,
+                    "conversion_rate_pct": 1.6
                 },
                 {
                     "hour": "2026-10-10T22:00:00",
+                    "total_resolved": 177,
+                    "completed": 5,
+                    "conversion_rate_pct": 2.82
+                },
+                {
+                    "hour": "2026-10-10T23:00:00",
+                    "total_resolved": 150,
+                    "completed": 6,
+                    "conversion_rate_pct": 4.0
+                },
+                {
+                    "hour": "2026-10-11T00:00:00",
+                    "total_resolved": 132,
+                    "completed": 4,
+                    "conversion_rate_pct": 3.03
+                },
+                {
+                    "hour": "2026-10-11T01:00:00",
+                    "total_resolved": 53,
+                    "completed": 3,
+                    "conversion_rate_pct": 5.66
+                },
+                {
+                    "hour": "2026-10-11T02:00:00",
+                    "total_resolved": 32,
+                    "completed": 2,
+                    "conversion_rate_pct": 6.25
+                },
+                {
+                    "hour": "2026-10-11T03:00:00",
+                    "total_resolved": 39,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-11T04:00:00",
+                    "total_resolved": 11,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-11T05:00:00",
+                    "total_resolved": 16,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-11T06:00:00",
+                    "total_resolved": 26,
+                    "completed": 1,
+                    "conversion_rate_pct": 3.85
+                },
+                {
+                    "hour": "2026-10-11T07:00:00",
+                    "total_resolved": 31,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-11T08:00:00",
+                    "total_resolved": 40,
+                    "completed": 1,
+                    "conversion_rate_pct": 2.5
+                },
+                {
+                    "hour": "2026-10-11T09:00:00",
+                    "total_resolved": 46,
+                    "completed": 1,
+                    "conversion_rate_pct": 2.17
+                },
+                {
+                    "hour": "2026-10-11T10:00:00",
+                    "total_resolved": 38,
+                    "completed": 3,
+                    "conversion_rate_pct": 7.89
+                },
+                {
+                    "hour": "2026-10-11T11:00:00",
+                    "total_resolved": 43,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-11T12:00:00",
+                    "total_resolved": 69,
+                    "completed": 1,
+                    "conversion_rate_pct": 1.45
+                },
+                {
+                    "hour": "2026-10-11T13:00:00",
+                    "total_resolved": 71,
+                    "completed": 1,
+                    "conversion_rate_pct": 1.41
+                },
+                {
+                    "hour": "2026-10-11T14:00:00",
+                    "total_resolved": 122,
+                    "completed": 1,
+                    "conversion_rate_pct": 0.82
+                },
+                {
+                    "hour": "2026-10-11T15:00:00",
+                    "total_resolved": 117,
+                    "completed": 3,
+                    "conversion_rate_pct": 2.56
+                },
+                {
+                    "hour": "2026-10-11T16:00:00",
+                    "total_resolved": 170,
+                    "completed": 6,
+                    "conversion_rate_pct": 3.53
+                },
+                {
+                    "hour": "2026-10-11T17:00:00",
+                    "total_resolved": 251,
+                    "completed": 6,
+                    "conversion_rate_pct": 2.39
+                },
+                {
+                    "hour": "2026-10-11T18:00:00",
+                    "total_resolved": 219,
+                    "completed": 9,
+                    "conversion_rate_pct": 4.11
+                },
+                {
+                    "hour": "2026-10-11T19:00:00",
+                    "total_resolved": 303,
+                    "completed": 3,
+                    "conversion_rate_pct": 0.99
+                },
+                {
+                    "hour": "2026-10-11T20:00:00",
+                    "total_resolved": 271,
+                    "completed": 5,
+                    "conversion_rate_pct": 1.85
+                },
+                {
+                    "hour": "2026-10-11T21:00:00",
+                    "total_resolved": 154,
+                    "completed": 4,
+                    "conversion_rate_pct": 2.6
+                },
+                {
+                    "hour": "2026-10-11T22:00:00",
+                    "total_resolved": 143,
+                    "completed": 3,
+                    "conversion_rate_pct": 2.1
+                },
+                {
+                    "hour": "2026-10-11T23:00:00",
+                    "total_resolved": 185,
+                    "completed": 5,
+                    "conversion_rate_pct": 2.7
+                },
+                {
+                    "hour": "2026-10-12T00:00:00",
+                    "total_resolved": 130,
+                    "completed": 3,
+                    "conversion_rate_pct": 2.31
+                },
+                {
+                    "hour": "2026-10-12T01:00:00",
+                    "total_resolved": 28,
+                    "completed": 3,
+                    "conversion_rate_pct": 10.71
+                },
+                {
+                    "hour": "2026-10-12T02:00:00",
+                    "total_resolved": 50,
+                    "completed": 3,
+                    "conversion_rate_pct": 6.0
+                },
+                {
+                    "hour": "2026-10-12T03:00:00",
+                    "total_resolved": 19,
+                    "completed": 1,
+                    "conversion_rate_pct": 5.26
+                },
+                {
+                    "hour": "2026-10-12T04:00:00",
+                    "total_resolved": 31,
+                    "completed": 1,
+                    "conversion_rate_pct": 3.23
+                },
+                {
+                    "hour": "2026-10-12T05:00:00",
+                    "total_resolved": 16,
+                    "completed": 1,
+                    "conversion_rate_pct": 6.25
+                },
+                {
+                    "hour": "2026-10-12T06:00:00",
+                    "total_resolved": 33,
+                    "completed": 3,
+                    "conversion_rate_pct": 9.09
+                },
+                {
+                    "hour": "2026-10-12T07:00:00",
+                    "total_resolved": 62,
+                    "completed": 1,
+                    "conversion_rate_pct": 1.61
+                },
+                {
+                    "hour": "2026-10-12T08:00:00",
+                    "total_resolved": 35,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-12T09:00:00",
+                    "total_resolved": 37,
+                    "completed": 2,
+                    "conversion_rate_pct": 5.41
+                },
+                {
+                    "hour": "2026-10-12T10:00:00",
+                    "total_resolved": 57,
+                    "completed": 4,
+                    "conversion_rate_pct": 7.02
+                },
+                {
+                    "hour": "2026-10-12T11:00:00",
+                    "total_resolved": 27,
+                    "completed": 2,
+                    "conversion_rate_pct": 7.41
+                },
+                {
+                    "hour": "2026-10-12T12:00:00",
                     "total_resolved": 0,
                     "completed": 0,
                     "conversion_rate_pct": 0.0
                 },
                 {
-                    "hour": "2026-10-10T23:00:00",
+                    "hour": "2026-10-12T13:00:00",
+                    "total_resolved": 16,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-12T14:00:00",
+                    "total_resolved": 51,
+                    "completed": 4,
+                    "conversion_rate_pct": 7.84
+                },
+                {
+                    "hour": "2026-10-12T15:00:00",
+                    "total_resolved": 88,
+                    "completed": 2,
+                    "conversion_rate_pct": 2.27
+                },
+                {
+                    "hour": "2026-10-12T16:00:00",
+                    "total_resolved": 144,
+                    "completed": 6,
+                    "conversion_rate_pct": 4.17
+                },
+                {
+                    "hour": "2026-10-12T17:00:00",
+                    "total_resolved": 167,
+                    "completed": 2,
+                    "conversion_rate_pct": 1.2
+                },
+                {
+                    "hour": "2026-10-12T18:00:00",
+                    "total_resolved": 174,
+                    "completed": 5,
+                    "conversion_rate_pct": 2.87
+                },
+                {
+                    "hour": "2026-10-12T19:00:00",
+                    "total_resolved": 150,
+                    "completed": 5,
+                    "conversion_rate_pct": 3.33
+                },
+                {
+                    "hour": "2026-10-12T20:00:00",
+                    "total_resolved": 135,
+                    "completed": 5,
+                    "conversion_rate_pct": 3.7
+                },
+                {
+                    "hour": "2026-10-12T21:00:00",
+                    "total_resolved": 219,
+                    "completed": 1,
+                    "conversion_rate_pct": 0.46
+                },
+                {
+                    "hour": "2026-10-12T22:00:00",
+                    "total_resolved": 201,
+                    "completed": 7,
+                    "conversion_rate_pct": 3.48
+                },
+                {
+                    "hour": "2026-10-12T23:00:00",
+                    "total_resolved": 163,
+                    "completed": 3,
+                    "conversion_rate_pct": 1.84
+                },
+                {
+                    "hour": "2026-10-13T00:00:00",
+                    "total_resolved": 107,
+                    "completed": 3,
+                    "conversion_rate_pct": 2.8
+                },
+                {
+                    "hour": "2026-10-13T01:00:00",
+                    "total_resolved": 64,
+                    "completed": 3,
+                    "conversion_rate_pct": 4.69
+                },
+                {
+                    "hour": "2026-10-13T02:00:00",
+                    "total_resolved": 39,
+                    "completed": 2,
+                    "conversion_rate_pct": 5.13
+                },
+                {
+                    "hour": "2026-10-13T03:00:00",
+                    "total_resolved": 7,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-13T04:00:00",
+                    "total_resolved": 24,
+                    "completed": 1,
+                    "conversion_rate_pct": 4.17
+                },
+                {
+                    "hour": "2026-10-13T05:00:00",
+                    "total_resolved": 19,
+                    "completed": 2,
+                    "conversion_rate_pct": 10.53
+                },
+                {
+                    "hour": "2026-10-13T06:00:00",
+                    "total_resolved": 19,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-13T07:00:00",
+                    "total_resolved": 34,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-13T08:00:00",
+                    "total_resolved": 56,
+                    "completed": 1,
+                    "conversion_rate_pct": 1.79
+                },
+                {
+                    "hour": "2026-10-13T09:00:00",
+                    "total_resolved": 32,
+                    "completed": 2,
+                    "conversion_rate_pct": 6.25
+                },
+                {
+                    "hour": "2026-10-13T10:00:00",
+                    "total_resolved": 3,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-13T11:00:00",
+                    "total_resolved": 0,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-13T12:00:00",
+                    "total_resolved": 0,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-13T13:00:00",
+                    "total_resolved": 0,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-13T14:00:00",
+                    "total_resolved": 0,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-13T15:00:00",
+                    "total_resolved": 0,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-13T16:00:00",
+                    "total_resolved": 0,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-13T17:00:00",
+                    "total_resolved": 0,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-13T18:00:00",
+                    "total_resolved": 0,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-13T19:00:00",
+                    "total_resolved": 0,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-13T20:00:00",
+                    "total_resolved": 0,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-13T21:00:00",
+                    "total_resolved": 0,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-13T22:00:00",
+                    "total_resolved": 0,
+                    "completed": 0,
+                    "conversion_rate_pct": 0.0
+                },
+                {
+                    "hour": "2026-10-13T23:00:00",
                     "total_resolved": 0,
                     "completed": 0,
                     "conversion_rate_pct": 0.0
@@ -1643,24 +1608,143 @@
             ],
             "operators": [
                 {
-                    "operator": "AIRTEL_COD",
-                    "attempts": 8990,
-                    "ok": 379
+                    "operator": "AIRTEL_OAPI_UGA",
+                    "attempts": 3946,
+                    "ok": 132
                 },
                 {
-                    "operator": "VODACOM_MPESA_COD",
-                    "attempts": 5227,
-                    "ok": 176
-                },
-                {
-                    "operator": "ORANGE_COD",
-                    "attempts": 3357,
-                    "ok": 81
+                    "operator": "MTN_MOMO_UGA",
+                    "attempts": 9447,
+                    "ok": 241
                 }
             ],
+            "placements": {
+                "tracked_resolved": 1842,
+                "by_type": [
+                    {
+                        "type": "mobile app",
+                        "total_resolved": 1656,
+                        "completed": 43,
+                        "conversion_rate_pct": 2.6,
+                        "count": 353
+                    },
+                    {
+                        "type": "website",
+                        "total_resolved": 186,
+                        "completed": 7,
+                        "conversion_rate_pct": 3.76,
+                        "count": 40
+                    }
+                ],
+                "top": [
+                    {
+                        "placement": "mobileapp::2-com.star.mobile.video",
+                        "total_resolved": 81,
+                        "completed": 4,
+                        "conversion_rate_pct": 4.94
+                    },
+                    {
+                        "placement": "mobileapp::2-com.mirroring.app.casttv",
+                        "total_resolved": 53,
+                        "completed": 1,
+                        "conversion_rate_pct": 1.89
+                    },
+                    {
+                        "placement": "www.metroopinion.com",
+                        "total_resolved": 43,
+                        "completed": 2,
+                        "conversion_rate_pct": 4.65
+                    },
+                    {
+                        "placement": "mobileapp::2-proxy.browser.unblock.sites.proxybrowser.unblocksites",
+                        "total_resolved": 41,
+                        "completed": 1,
+                        "conversion_rate_pct": 2.44
+                    },
+                    {
+                        "placement": "mobileapp::2-com.iwanmaket.walk.stepreward",
+                        "total_resolved": 39,
+                        "completed": 2,
+                        "conversion_rate_pct": 5.13
+                    },
+                    {
+                        "placement": "mobileapp::2-com.iptv.video.player.live.channels",
+                        "total_resolved": 37,
+                        "completed": 1,
+                        "conversion_rate_pct": 2.7
+                    },
+                    {
+                        "placement": "(other placements)",
+                        "total_resolved": 1548,
+                        "completed": 39,
+                        "conversion_rate_pct": 2.52,
+                        "count": 387
+                    }
+                ]
+            },
+            "devices": {
+                "tracked_resolved": 1842,
+                "by_brand": [
+                    {
+                        "brand": "samsung",
+                        "total_resolved": 645,
+                        "completed": 24,
+                        "conversion_rate_pct": 3.72
+                    },
+                    {
+                        "brand": "tecno",
+                        "total_resolved": 504,
+                        "completed": 7,
+                        "conversion_rate_pct": 1.39
+                    },
+                    {
+                        "brand": "infinix",
+                        "total_resolved": 250,
+                        "completed": 6,
+                        "conversion_rate_pct": 2.4
+                    },
+                    {
+                        "brand": "itel",
+                        "total_resolved": 120,
+                        "completed": 3,
+                        "conversion_rate_pct": 2.5
+                    },
+                    {
+                        "brand": "android",
+                        "total_resolved": 75,
+                        "completed": 1,
+                        "conversion_rate_pct": 1.33
+                    },
+                    {
+                        "brand": "xiaomi",
+                        "total_resolved": 57,
+                        "completed": 1,
+                        "conversion_rate_pct": 1.75
+                    },
+                    {
+                        "brand": "zte",
+                        "total_resolved": 44,
+                        "completed": 1,
+                        "conversion_rate_pct": 2.27
+                    },
+                    {
+                        "brand": "nokia",
+                        "total_resolved": 26,
+                        "completed": 1,
+                        "conversion_rate_pct": 3.85
+                    },
+                    {
+                        "brand": "(other brands)",
+                        "total_resolved": 121,
+                        "completed": 6,
+                        "conversion_rate_pct": 4.96,
+                        "count": 16
+                    }
+                ]
+            },
             "campaign_overview": "",
             "campaigns": []
         }
     ],
-    "generated_at": "2026-10-10T15:27:35.116711+00:00"
+    "generated_at": "2026-10-13T06:12:56.442532+00:00"
 }
